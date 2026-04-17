@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#d4a017"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>Leaderboard — Zion Games</title>
+  <link rel="stylesheet" href="/css/styles.css"/>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <button class="back-btn" onclick="navigateTo('/')" aria-label="Back">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      </button>
+      <span class="header-title">🏆 Leaderboard</span>
+      <button class="header-action" onclick="confirmClear()" title="Clear all">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="page safe-bottom" id="appRoot"></main>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/scoreboard.js"></script>
+  <script>
+    const GAME_LABELS = {
+      mrwhite:  { label: 'Mr. White', icon: '📜' },
+      mafia:    { label: 'Mafia',     icon: '🦅' },
+      jeopardy: { label: 'Jeopardy',  icon: '⭐' },
+      taboo:    { label: 'Taboo',     icon: '📖' },
+    };
+
+    const RANK_ICONS = ['🥇','🥈','🥉'];
+
+    function renderBoard() {
+      const root  = document.getElementById('appRoot');
+      const top   = getTopPlayers();
+
+      if (top.length === 0) {
+        root.innerHTML = `
+          <div class="container animate-fade-in" style="padding-top:3rem;padding-bottom:2rem;text-align:center;">
+            <span style="font-size:3.5rem;display:block;margin-bottom:1rem;opacity:0.4;animation:float 4s ease-in-out infinite;">🏆</span>
+            <h2 class="font-serif text-gold2 mb-2">No Records Yet</h2>
+            <p class="text-muted">Finish a game and save your wins to build the leaderboard!</p>
+            <button class="btn btn-primary mt-4" onclick="navigateTo('/')">Play a Game</button>
+          </div>`;
+        return;
+      }
+
+      const leader = top[0];
+
+      root.innerHTML = `
+        <div class="container animate-fade-in" style="padding-top:1.5rem;padding-bottom:2rem;">
+
+          <!-- Top winner spotlight -->
+          <div class="card card-glow text-center mb-4 stagger" style="padding:2rem;background:linear-gradient(145deg,rgba(212,160,23,0.1),rgba(212,160,23,0.04));">
+            <div style="font-size:3rem;margin-bottom:0.5rem;animation:bounce 2s ease-in-out infinite;filter:drop-shadow(0 0 16px rgba(212,160,23,0.5));">🏆</div>
+            <p style="font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text2);margin-bottom:0.25rem;">All-Time Leader</p>
+            <h2 class="font-serif" style="font-size:1.8rem;background:linear-gradient(135deg,var(--gold2),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+              ${leader.name}
+            </h2>
+            <p class="text-muted text-sm mt-1">${leader.total} win${leader.total !== 1 ? 's' : ''} total</p>
+            <div class="flex gap-2 justify-center mt-2">
+              ${Object.entries(GAME_LABELS).filter(([g]) => leader.wins?.[g]).map(([g, info]) =>
+                `<span class="badge badge-gold">${info.icon} ${leader.wins[g]}</span>`
+              ).join('')}
+            </div>
+          </div>
+
+          <!-- Full leaderboard -->
+          <div class="card mb-4">
+            <p class="input-label mb-3">All Players</p>
+            <div class="flex flex-col gap-2 stagger">
+              ${top.map((p, i) => `
+                <div class="score-row ${i === 0 ? 'leader' : ''}" style="flex-direction:column;align-items:flex-start;gap:0.4rem;padding:0.85rem;">
+                  <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center gap-2">
+                      <span style="font-size:1.3rem;width:28px;">${RANK_ICONS[i] || `#${i+1}`}</span>
+                      <div class="avatar ${i===0?'':'avatar-sm'}">${getInitials(p.name)}</div>
+                      <span style="font-weight:600;">${p.name}</span>
+                    </div>
+                    <span class="score-value" style="${i===0?'':'font-size:1rem;'}">${p.total} <span class="text-muted" style="font-size:0.75rem;font-family:var(--font-b);">win${p.total!==1?'s':''}</span></span>
+                  </div>
+                  ${Object.keys(p.wins||{}).length ? `
+                  <div class="flex gap-1 flex-wrap" style="padding-left:2.5rem;">
+                    ${Object.entries(GAME_LABELS).filter(([g]) => p.wins?.[g]).map(([g, info]) =>
+                      `<span style="font-size:0.72rem;padding:0.15rem 0.5rem;background:var(--gold-dim);border:1px solid var(--border2);border-radius:999px;color:var(--text2);">${info.icon} ${info.label}: ${p.wins[g]}</span>`
+                    ).join('')}
+                  </div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Per-game breakdown -->
+          <div class="card">
+            <p class="input-label mb-3">By Game</p>
+            <div class="flex flex-col gap-3">
+              ${Object.entries(GAME_LABELS).map(([game, info]) => {
+                const ranked = top.filter(p => p.wins?.[game]).sort((a,b)=>(b.wins[game]||0)-(a.wins[game]||0));
+                if (!ranked.length) return `
+                  <div>
+                    <p class="text-sm font-bold mb-1">${info.icon} ${info.label}</p>
+                    <p class="text-muted text-sm">No games recorded yet.</p>
+                  </div>`;
+                return `
+                  <div>
+                    <p class="text-sm font-bold mb-2">${info.icon} ${info.label}</p>
+                    <div class="flex flex-col gap-1">
+                      ${ranked.slice(0,5).map((p, i) => `
+                        <div class="flex items-center justify-between" style="padding:0.4rem 0.65rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);">
+                          <div class="flex items-center gap-2">
+                            <span style="font-size:0.9rem;">${RANK_ICONS[i]||''}</span>
+                            <span class="text-sm">${p.name}</span>
+                          </div>
+                          <span style="font-size:0.9rem;font-weight:700;color:var(--gold2);">${p.wins[game]}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>
+
+        </div>`;
+    }
+
+    function confirmClear() {
+      const html = `
+        <div class="overlay center" id="clearOverlay">
+          <div class="modal center-modal animate-pop-in" style="max-width:320px;">
+            <div class="text-center mb-3">
+              <span style="font-size:2.5rem;display:block;margin-bottom:0.5rem;">🗑️</span>
+              <h3 class="font-serif text-gold2 mb-1">Clear Leaderboard?</h3>
+              <p class="text-muted text-sm">All win records will be permanently deleted.</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-ghost btn-full" onclick="document.getElementById('clearOverlay').remove()">Cancel</button>
+              <button class="btn btn-danger btn-full" onclick="clearAll()">Clear All</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    function clearAll() {
+      clearScoreboard();
+      document.getElementById('clearOverlay')?.remove();
+      showToast('Leaderboard cleared');
+      renderBoard();
+      haptic('heavy');
+    }
+
+    renderBoard();
+  </script>
+</body>
+</html>

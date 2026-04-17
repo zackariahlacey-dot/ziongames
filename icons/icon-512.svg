@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#0d1117"/>
+  <circle cx="96" cy="96" r="70" fill="none" stroke="#d4a017" stroke-width="3" opacity="0.3"/>
+  <!-- Dove -->
+  <g transform="translate(96,88)" fill="#d4a017">
+    <ellipse cx="0" cy="0" rx="22" ry="12" transform="rotate(-15)"/>
+    <ellipse cx="-18" cy="-8" rx="16" ry="6" transform="rotate(-40)"/>
+    <ellipse cx="18" cy="-8" rx="16" ry="6" transform="rotate(40)"/>
+    <ellipse cx="0" cy="8" rx="4" ry="8"/>
+    <circle cx="10" cy="-8" r="3" fill="#0d1117"/>
+  </g>
+  <!-- Stars -->
+  <g fill="#d4a017" opacity="0.6">
+    <polygon points="96,20 98,27 106,27 100,31 102,38 96,34 90,38 92,31 86,27 94,27" transform="scale(0.8) translate(24,0)"/>
+  </g>
+  <text x="96" y="148" text-anchor="middle" font-family="Georgia,serif" font-size="18" fill="#d4a017" font-weight="bold">ZION</text>
+  <text x="96" y="168" text-anchor="middle" font-family="Georgia,serif" font-size="14" fill="#a8956e">GAMES</text>
+</svg>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#d4a017"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Zion Games"/>
+  <meta name="description" content="Biblical party games for groups — Mr. White, Mafia, Jeopardy, and more."/>
+  <title>Zion Games</title>
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="apple-touch-icon" href="/icons/icon-192.svg"/>
+  <link rel="stylesheet" href="/css/styles.css"/>
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div style="width:40px"></div>
+      <h1 class="header-title" style="font-size:1.1rem;letter-spacing:0.12em;text-transform:uppercase;">✦ Zion Games ✦</h1>
+      <button class="header-action" onclick="navigateTo('/admin/index.html')" title="Admin">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <main class="page" style="padding-bottom:2rem;">
+    <div class="container">
+      <div class="hero stagger">
+        <span class="hero-icon" aria-hidden="true">🕊️</span>
+        <h1 class="hero-title">Zion Games</h1>
+        <p class="hero-sub">Biblical party games for every gathering</p>
+        <button onclick="navigateTo('/scoreboard.html')"
+          class="btn btn-secondary mt-3"
+          style="margin:0 auto;display:inline-flex;gap:0.5rem;align-items:center;">
+          🏆 Leaderboard
+        </button>
+      </div>
+
+      <!-- Games Grid -->
+      <div class="flex flex-col gap-3 stagger" id="gamesGrid">
+
+        <!-- Mr. White -->
+        <a class="game-card" href="/games/mr-white.html">
+          <span class="game-card-icon">📜</span>
+          <div class="game-card-title">Biblical Mr. White</div>
+          <p class="game-card-desc">
+            Every player shares the same secret word — except one. Mr. White must blend in without knowing it. Be the last to be caught, or guess the word if you are!
+          </p>
+          <div class="game-card-meta">
+            <span class="badge badge-gold">3–10 Players</span>
+            <span class="badge badge-green">Easy / Medium / Hard</span>
+            <span class="badge badge-blue">Party</span>
+          </div>
+        </a>
+
+        <!-- Mafia -->
+        <a class="game-card" href="/games/mafia.html">
+          <span class="game-card-icon">🦅</span>
+          <div class="game-card-title">Biblical Mafia</div>
+          <p class="game-card-desc">
+            The False Prophets hide among the faithful. Disciples must root out evil before they are outnumbered. Use special roles — Prophet, Healer, Judge — wisely.
+          </p>
+          <div class="game-card-meta">
+            <span class="badge badge-gold">5–12 Players</span>
+            <span class="badge badge-red">Deduction</span>
+            <span class="badge badge-blue">Party</span>
+          </div>
+        </a>
+
+        <!-- Jeopardy -->
+        <a class="game-card" href="/games/jeopardy.html">
+          <span class="game-card-icon">⭐</span>
+          <div class="game-card-title">Biblical Jeopardy</div>
+          <p class="game-card-desc">
+            Test your knowledge of Scripture across six categories. Choose point values, answer in the form of a question, and crown the wisest player at the table.
+          </p>
+          <div class="game-card-meta">
+            <span class="badge badge-gold">2–6 Teams</span>
+            <span class="badge badge-purple">Trivia</span>
+            <span class="badge badge-blue">Quiz</span>
+          </div>
+        </a>
+
+        <!-- Taboo -->
+        <a class="game-card" href="/games/taboo.html">
+          <span class="game-card-icon">📖</span>
+          <div class="game-card-title">Biblical Taboo</div>
+          <p class="game-card-desc">
+            Describe the biblical word without saying what's forbidden. Your team guesses, the other team listens for slips — one wrong word and you're buzzed!
+          </p>
+          <div class="game-card-meta">
+            <span class="badge badge-gold">2–6 Teams</span>
+            <span class="badge badge-red">⚡ Forbidden Words</span>
+            <span class="badge badge-blue">Party</span>
+          </div>
+        </a>
+
+        <!-- Coming Soon Placeholder -->
+        <div class="game-card" style="opacity:0.45;pointer-events:none;cursor:default;">
+          <span class="game-card-icon">🌟</span>
+          <div class="game-card-title" style="color:var(--text2);">More Games Coming</div>
+          <p class="game-card-desc">Biblical Trivia Sprint, Scripture Charades, Psalm Scramble, and more are in the works.</p>
+          <div class="game-card-meta">
+            <span class="badge badge-gold">Coming Soon</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Admin link -->
+      <div class="text-center mt-4" style="color:var(--text3);font-size:0.8rem;">
+        <button onclick="navigateTo('/admin/index.html')" style="background:none;border:none;color:var(--text3);font-size:0.8rem;cursor:pointer;padding:0.5rem;">
+          ⚙️ Admin Panel
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

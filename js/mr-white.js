@@ -178,7 +178,13 @@ function submitName(idx) {
   if (!name) { showToast('Please enter a name', 'error'); return; }
 
   MW.players[idx] = name;
-  showRoleReveal(idx);
+  const nextIdx = idx + 1;
+  
+  if (nextIdx < _setupPlayerCount) {
+    showNameEntry(nextIdx);
+  } else {
+    showRoleReveal(0);
+  }
 }
 
 // ── SCREEN: Role Reveal ───────────────────────────────────

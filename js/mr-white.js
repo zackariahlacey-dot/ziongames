@@ -178,13 +178,7 @@ function submitName(idx) {
   if (!name) { showToast('Please enter a name', 'error'); return; }
 
   MW.players[idx] = name;
-  const nextIdx = idx + 1;
-  
-  if (nextIdx < _setupPlayerCount) {
-    showNameEntry(nextIdx);
-  } else {
-    showRoleReveal(0);
-  }
+  showRoleReveal(idx);
 }
 
 // ── SCREEN: Role Reveal ───────────────────────────────────
@@ -260,8 +254,8 @@ function flipReveal(idx, isMW) {
     const nextBtn = document.createElement('div');
     nextBtn.className = 'mt-3 animate-slide-up';
     if (nextIdx < MW.players.length) {
-      nextBtn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showRoleReveal(${nextIdx})">
-        Next: ${MW.players[nextIdx]} →
+      nextBtn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showNameEntry(${nextIdx})">
+        Next Player →
       </button>`;
     } else {
       nextBtn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showCluePhase()">

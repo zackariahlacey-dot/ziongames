@@ -210,14 +210,14 @@ const DEFAULT_DATA = {
     ],
     roleDistribution: {
       //        Good roles                              Evil roles                     Neutral   Evil%
-      5:  { disciple: 2, prophet: 1,                   false_prophet: 1, pharaoh: 1                    }, // 3G 2E  — 40%
-      6:  { disciple: 2, prophet: 1, healer: 1,        false_prophet: 1, pharaoh: 1                    }, // 4G 2E  — 33%
-      7:  { disciple: 3, prophet: 1, healer: 1,        false_prophet: 1, pharaoh: 1                    }, // 5G 2E  — 29%
-      8:  { disciple: 2, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1                 }, // 5G 3E  — 37%
-      9:  { disciple: 3, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1                 }, // 6G 3E  — 33%
-      10: { disciple: 3, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, wanderer: 1    }, // 6G 3E 1N — 30%
-      11: { disciple: 3, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, sorcerer: 1, wanderer: 1 }, // 6G 4E 1N — 36%
-      12: { disciple: 4, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, sorcerer: 1, wanderer: 1 }  // 7G 4E 1N — 33%
+      5:  { disciple: 3, prophet: 1,                   pharaoh: 1                                     }, // 4G 1E  — 20%
+      6:  { disciple: 3, prophet: 1, healer: 1,        pharaoh: 1                                     }, // 5G 1E  — 17%
+      7:  { disciple: 4, prophet: 1, healer: 1,        pharaoh: 1                                     }, // 6G 1E  — 14%
+      8:  { disciple: 3, prophet: 1, healer: 1, judge: 1, false_prophet: 1, pharaoh: 1                }, // 6G 2E  — 25%
+      9:  { disciple: 4, prophet: 1, healer: 1, judge: 1, false_prophet: 1, pharaoh: 1                }, // 7G 2E  — 22%
+      10: { disciple: 4, prophet: 1, healer: 1, judge: 1, false_prophet: 1, pharaoh: 1, wanderer: 1   }, // 7G 2E 1N — 20%
+      11: { disciple: 4, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, wanderer: 1   }, // 7G 3E 1N — 27%
+      12: { disciple: 5, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, wanderer: 1   }  // 8G 3E 1N — 25%
     }
   },
 
@@ -295,6 +295,8 @@ function loadGameData() {
     if (stored) {
       const data = JSON.parse(stored);
       if (!data.taboo) data.taboo = JSON.parse(JSON.stringify(DEFAULT_DATA.taboo));
+      // Always refresh roleDistribution from defaults (balance changes take effect immediately)
+      if (data.mafia) data.mafia.roleDistribution = JSON.parse(JSON.stringify(DEFAULT_DATA.mafia.roleDistribution));
       // Migrate old mrWhite format (plain strings → word pairs)
       ['easy','medium','hard'].forEach(d => {
         if (Array.isArray(data.mrWhite?.[d]) && typeof data.mrWhite[d][0] === 'string') {

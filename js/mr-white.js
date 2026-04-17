@@ -24,13 +24,12 @@ function render(html) {
 }
 
 // ── Setup state ───────────────────────────────────────────
-let _setupNames = ['', '', ''];
+let _setupPlayerCount = 3;
 
 // ── SCREEN: Setup ─────────────────────────────────────────
 function showSetup() {
   MW.phase = 'setup';
-  if (MW.players.length > 0) _setupNames = [...MW.players, ''];
-  if (_setupNames.length < 3) _setupNames = ['', '', ''];
+  _setupPlayerCount = MW.players.length >= 3 ? MW.players.length : 3;
   renderSetupScreen();
 }
 
@@ -56,16 +55,17 @@ function renderSetupScreen() {
         </div>
       </div>
 
-      <!-- Players -->
-      <div class="card mb-3">
-        <p class="input-label mb-2">Players <span class="text-muted">(3–10)</span></p>
-        <div id="playerList" class="flex flex-col gap-2 mb-2">
-          ${_setupNames.map((v, i) => playerInputRow(v, i)).join('')}
+      <!-- Player Count -->
+      <div class="card mb-4" style="padding:1.5rem;">
+        <p class="input-label mb-3 text-center">Number of Players</p>
+        <div class="flex items-center justify-center gap-4">
+          <button class="btn btn-secondary btn-icon" onclick="adjustCount(-1)" style="font-size:1.5rem;">-</button>
+          <span style="font-size:2rem;font-weight:700;font-family:var(--font-h);color:var(--text);min-width:3rem;text-align:center;">
+            ${_setupPlayerCount}
+          </span>
+          <button class="btn btn-secondary btn-icon" onclick="adjustCount(1)" style="font-size:1.5rem;">+</button>
         </div>
-        <button class="btn btn-ghost btn-sm btn-full" onclick="addPlayer()">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          Add Player
-        </button>
+        <p class="text-muted text-center text-sm mt-3">3 to 10 players</p>
       </div>
 
       <button class="btn btn-primary btn-lg btn-full" onclick="startGame()">
@@ -76,60 +76,20 @@ function renderSetupScreen() {
   `);
 }
 
-function playerInputRow(val, idx) {
-  return `
-    <div class="flex gap-1 items-center">
-      <div class="avatar avatar-sm mw-av-${idx}">${val ? getInitials(val) : (idx+1)}</div>
-      <input class="input" placeholder="Player ${idx+1} name" value="${val}"
-        oninput="onMWNameInput(this,${idx})"
-        style="flex:1;"/>
-      ${idx > 0 ? `<button onclick="removePlayer(${idx})" class="btn btn-ghost btn-icon" style="width:36px;height:36px;color:var(--text3);">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>` : '<div style="width:36px"></div>'}
-    </div>
-  `;
-}
-
-function onMWNameInput(input, idx) {
-  _setupNames[idx] = input.value;
-  const av = input.parentElement.querySelector('.avatar');
-  if (av) av.textContent = input.value ? getInitials(input.value) : (idx + 1);
-}
-
 function setDiff(d) {
   MW.difficulty = d;
   document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`.diff-btn.${d}`)?.classList.add('active');
 }
 
-function addPlayer() {
-  syncSetupNames();
-  if (_setupNames.length >= 10) { showToast('Maximum 10 players', 'error'); return; }
-  _setupNames.push('');
+function adjustCount(delta) {
+  _setupPlayerCount += delta;
+  if (_setupPlayerCount < 3) _setupPlayerCount = 3;
+  if (_setupPlayerCount > 10) _setupPlayerCount = 10;
   renderSetupScreen();
-  // Focus last input
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('#playerList input');
-    inputs[inputs.length - 1]?.focus();
-  }, 50);
-}
-
-function removePlayer(idx) {
-  syncSetupNames();
-  _setupNames.splice(idx, 1);
-  renderSetupScreen();
-}
-
-function syncSetupNames() {
-  const inputs = document.querySelectorAll('#playerList input');
-  inputs.forEach((inp, i) => { _setupNames[i] = inp.value; });
 }
 
 function startGame() {
-  syncSetupNames();
-  MW.players = _setupNames.filter(n => n.trim());
-  if (MW.players.length < 3) { showToast('Need at least 3 players', 'error'); return; }
-
   const data = getGameData();
   const pool = data.mrWhite[MW.difficulty];
   if (!pool || pool.length === 0) { showToast('No words for this difficulty', 'error'); return; }
@@ -137,13 +97,14 @@ function startGame() {
   const pair = pickRandom(pool);
   MW.word = pair.word;
   MW.mrWhiteWord = pair.mrWhite;
-  MW.mrWhiteIndex = Math.floor(Math.random() * MW.players.length);
+  MW.mrWhiteIndex = Math.floor(Math.random() * _setupPlayerCount);
   MW._pool = pool;
   MW.eliminated = [];
   MW.round = 1;
   MW.votes = {};
+  MW.players = new Array(_setupPlayerCount).fill('');
 
-  showRoleReveal(0);
+  showNameEntry(0);
 }
 
 function reshuffleWord() {
@@ -158,6 +119,42 @@ function reshuffleWord() {
   const btn = document.getElementById('shuffleBtn');
   if (btn) { btn.textContent = '✓ New word ready!'; btn.disabled = true; btn.style.opacity = '0.5'; }
   showToast('New word picked!', 'success');
+}
+
+// ── SCREEN: Name Entry (Sequential) ─────────────────────────
+function showNameEntry(idx) {
+  MW.phase = 'name-entry';
+
+  render(`
+    <div class="stagger text-center">
+      <p class="text-muted text-sm mb-1">Player ${idx + 1} of ${_setupPlayerCount}</p>
+      <h2 class="font-serif text-gold2 mb-4">Who are you?</h2>
+
+      <div class="card mb-4 text-left">
+        <p class="input-label mb-2">Enter your name</p>
+        <input type="text" class="input text-center" id="mwNameInput" placeholder="Name..."
+          style="font-size:1.25rem;font-weight:700;"
+          onkeydown="if(event.key==='Enter') submitName(${idx})">
+      </div>
+
+      <button class="btn btn-primary btn-lg btn-full" onclick="submitName(${idx})">
+        Next →
+      </button>
+
+      <div class="progress-bar mt-4"><div class="progress-fill" style="width:${((idx)/_setupPlayerCount)*100}%"></div></div>
+    </div>
+  `);
+
+  setTimeout(() => document.getElementById('mwNameInput')?.focus(), 100);
+}
+
+function submitName(idx) {
+  const input = document.getElementById('mwNameInput');
+  const name = input.value.trim();
+  if (!name) { showToast('Please enter a name', 'error'); return; }
+
+  MW.players[idx] = name;
+  showRoleReveal(idx);
 }
 
 // ── SCREEN: Role Reveal ───────────────────────────────────
@@ -212,11 +209,10 @@ function flipReveal(idx, isMW) {
   const back = document.getElementById('revBack');
   if (isMW) {
     back.innerHTML = `
-      <span style="font-size:2.5rem;margin-bottom:0.5rem;animation:bounce 1.5s infinite">🕵️</span>
-      <p class="font-serif text-red" style="font-size:1.4rem;font-weight:700;">Mr. White</p>
-      <p class="text-muted text-sm mt-1" style="margin-bottom:0.5rem;">Your word is</p>
-      <p class="word-text" style="font-size:1.6rem;">${MW.mrWhiteWord}</p>
-      <p class="text-muted text-sm mt-2">Everyone else has a <em>different but related</em> word. Give clues about yours — blend in and guess theirs if caught!</p>
+      <span style="font-size:2rem;margin-bottom:0.5rem;animation:float 3s ease-in-out infinite">📜</span>
+      <p class="text-muted text-sm" style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;">Your Word is</p>
+      <p class="word-text">${MW.mrWhiteWord}</p>
+      <p class="text-muted text-sm mt-2">Remember it — don't say it aloud!</p>
     `;
   } else {
     back.innerHTML = `

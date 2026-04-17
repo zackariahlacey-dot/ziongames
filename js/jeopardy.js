@@ -8,6 +8,7 @@ const JP = {
   finalBets: {},
   finalAnswered: false,
   phase: 'setup', // setup | board | question | final-bet | final-q | final-reveal | gameover
+  timerDuration: 30, // 15, 30, 45, 60, false
 };
 
 const root = document.getElementById('appRoot');
@@ -42,12 +43,30 @@ function showSetup() {
         </button>
       </div>
 
+      <div class="card mb-3">
+        <p class="input-label mb-2">Question Timer</p>
+        <div class="flex gap-1">
+          ${[false, 15, 30, 45, 60].map(val => `
+            <button class="diff-btn ${JP.timerDuration === val ? 'active' : ''}" style="flex:1;padding:0.5rem;font-size:0.9rem;"
+              onclick="setJPTimer(${val})">
+              ${val ? val + 's' : 'Off'}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
       <button class="btn btn-primary btn-lg btn-full" onclick="startJeopardy()">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
         Start Game
       </button>
     </div>
   `);
+
+  window.setJPTimer = function(val) {
+    if (JP.timerDuration === val) JP.timerDuration = false;
+    else JP.timerDuration = val;
+    showSetup();
+  };
 
   // Default teams
   if (JP.teams.length === 0) {
@@ -108,47 +127,58 @@ function showBoard() {
 
   const allDone = answeredQ === totalQ;
 
+  const isDesktop = window.innerWidth >= 900;
+
   render(`
-    <div>
-      <!-- Scores -->
-      <div class="flex gap-2 mb-3 overflow-x-auto" id="scoreboard" style="padding-bottom:4px;">
-        ${JP.teams.map((t, i) => `
-          <div class="score-row" style="min-width:90px;flex:1;flex-direction:column;gap:0.1rem;padding:0.5rem 0.6rem;text-align:center;">
-            <span class="text-sm" style="color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">${t.name}</span>
-            <span class="score-value" style="font-size:1.1rem;">$${t.score}</span>
-          </div>
-        `).join('')}
+    <div class="${isDesktop ? 'jp-desktop-layout' : ''}" style="${isDesktop ? 'display:grid;grid-template-columns:1fr 250px;gap:2rem;align-items:start;' : ''}">
+      ${!isDesktop && window.innerHeight > window.innerWidth && window.innerWidth > 600 ? 
+        `<div class="card mb-3 text-center p-2" style="background:rgba(212,160,23,0.1);border-color:var(--gold2);"><span class="text-sm text-gold2">📱 Rotate to landscape for best experience</span></div>` : ''}
+    
+      <!-- Board Area -->
+      <div style="flex:1;">
+        <div class="jeopardy-scroll animate-fade-in" style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:5px;">
+          ${cats.map((cat, ci) => `
+            <div class="jeopardy-cell header" style="${isDesktop ? 'font-size:1.1rem;padding:1rem 0.5rem;' : ''}">${cat.name}</div>
+          `).join('')}
+          ${[0,1,2,3,4].map(qi => cats.map((cat, ci) => {
+            const q = cat.questions[qi];
+            if (!q) return `<div class="jeopardy-cell"></div>`;
+            const isAnswered = JP.answered[`${ci}-${qi}`];
+            return `<div class="jeopardy-cell value ${isAnswered ? 'answered' : ''}" style="${isDesktop ? 'font-size:2rem;padding:2rem 1rem;' : ''}" onclick="${isAnswered ? '' : `openQuestion(${ci},${qi})`}">
+              ${isAnswered ? '' : `$${q.value}`}
+            </div>`;
+          }).join('')).join('')}
+        </div>
       </div>
 
-      <!-- Board -->
-      <div class="jeopardy-scroll animate-fade-in" style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:5px;">
-        ${cats.map((cat, ci) => `
-          <div class="jeopardy-cell header">${cat.name}</div>
-        `).join('')}
-        ${[0,1,2,3,4].map(qi => cats.map((cat, ci) => {
-          const q = cat.questions[qi];
-          if (!q) return `<div class="jeopardy-cell"></div>`;
-          const isAnswered = JP.answered[`${ci}-${qi}`];
-          return `<div class="jeopardy-cell value ${isAnswered ? 'answered' : ''}" onclick="${isAnswered ? '' : `openQuestion(${ci},${qi})`}">
-            ${isAnswered ? '' : `$${q.value}`}
-          </div>`;
-        }).join('')).join('')}
-      </div>
+      <!-- Right Sidebar (Scores & Final Jeopardy) -->
+      <div style="${isDesktop ? 'position:sticky;top:2rem;' : 'margin-top:1rem;'}">
+        <!-- Scores -->
+        <h3 class="font-serif text-gold2 mb-2" style="${!isDesktop?'display:none;':''}">Leaderboard</h3>
+        <div class="${isDesktop ? 'flex flex-col gap-2' : 'flex gap-2 overflow-x-auto'}" id="scoreboard" style="padding-bottom:4px;">
+          ${JP.teams.map((t, i) => `
+            <div class="score-row card card-glow" style="min-width:90px;flex:1;flex-direction:column;gap:0.25rem;padding:0.75rem;text-align:center;">
+              <span class="text-sm" style="color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">${t.name}</span>
+              <span class="score-value" style="font-size:1.5rem;">$${t.score}</span>
+            </div>
+          `).join('')}
+        </div>
 
-      <!-- Final Jeopardy -->
-      <div class="mt-3">
-        ${allDone ? `
-          <button class="btn btn-primary btn-lg btn-full glow-pulse" onclick="showFinalBet()">
-            ⭐ Final Jeopardy
-          </button>
-        ` : `
-          <div class="text-center text-muted text-sm mt-2">
-            ${answeredQ}/${totalQ} questions answered
-          </div>
-          <button class="btn btn-ghost btn-full mt-2" onclick="showFinalBet()">
-            Skip to Final Jeopardy →
-          </button>
-        `}
+        <!-- Final Jeopardy -->
+        <div class="mt-4">
+          ${allDone ? `
+            <button class="btn btn-primary btn-lg btn-full glow-pulse" onclick="showFinalBet()">
+              ⭐ Final Jeopardy
+            </button>
+          ` : `
+            <div class="text-center text-muted text-sm mt-2">
+              ${answeredQ}/${totalQ} questions answered
+            </div>
+            <button class="btn btn-ghost btn-full mt-2" onclick="showFinalBet()">
+              Skip to Final Jeopardy →
+            </button>
+          `}
+        </div>
       </div>
     </div>
   `);
@@ -162,31 +192,43 @@ function openQuestion(ci, qi) {
   JP.currentQ = { ci, qi, q, cat };
   JP.phase = 'question';
 
+  const isDesktop = window.innerWidth >= 900;
+
   render(`
-    <div class="stagger">
+    <div class="stagger ${isDesktop ? 'jp-question-desktop' : ''}" style="${isDesktop ? 'max-width:800px;margin:0 auto;' : ''}">
       <!-- Category label -->
       <div class="text-center mb-3">
-        <span class="badge badge-gold">${cat.name}</span>
-        <span class="badge badge-gold ml-1" style="margin-left:0.5rem;">$${q.value}</span>
+        <span class="badge badge-gold" style="${isDesktop ? 'font-size:1.1rem;padding:0.4rem 0.8rem;' : ''}">${cat.name}</span>
+        <span class="badge badge-gold ml-1" style="margin-left:0.5rem;${isDesktop ? 'font-size:1.1rem;padding:0.4rem 0.8rem;' : ''}">$${q.value}</span>
       </div>
 
       <!-- Question card -->
-      <div class="card card-glow p-3 mb-4 text-center" style="padding:2rem;">
-        <p class="font-serif" style="font-size:clamp(1rem,4vw,1.3rem);color:var(--text);line-height:1.6;">${q.question}</p>
+      <div class="card card-glow p-3 mb-4 text-center" style="${isDesktop ? 'padding:4rem 2rem;' : 'padding:2rem;'}">
+        <p class="font-serif" style="font-size:clamp(1rem,4vw,1.3rem);color:var(--text);line-height:1.6;${isDesktop ? 'font-size:2rem;' : ''}">${q.question}</p>
       </div>
+
+      <!-- Timer Bar -->
+      ${JP.timerDuration ? `
+      <div id="jpTimerContainer" class="progress-bar mb-4" style="height:12px;background:var(--bg-card);border:1px solid var(--border1);">
+        <div id="jpTimerFill" class="progress-fill" style="width:100%;background:var(--gold2);transition:width 0.1s linear, background-color 0.3s ease;"></div>
+      </div>
+      <div id="jpTimerText" class="text-center font-serif mb-4" style="font-size:1.5rem;color:var(--gold2);font-weight:700;">
+        ${JP.timerDuration}s
+      </div>
+      ` : ''}
 
       <!-- Answer (hidden by default) -->
       <div class="flip-card w-full mb-4" id="ansCard" onclick="revealAnswer()">
         <div class="flip-inner" style="min-height:0;">
           <div class="flip-front">
-            <div class="role-card-front" style="min-height:90px;padding:1.25rem;">
-              <span style="font-size:1.5rem">🤔</span>
-              <p class="text-muted text-sm">Tap to reveal answer</p>
+            <div class="role-card-front" style="min-height:90px;padding:1.25rem;${isDesktop ? 'padding:2rem;' : ''}">
+              <span style="font-size:1.5rem;${isDesktop ? 'font-size:2.5rem;' : ''}">🤔</span>
+              <p class="text-muted text-sm" style="${isDesktop ? 'font-size:1.1rem;' : ''}">Tap to reveal answer</p>
             </div>
           </div>
           <div class="flip-back">
-            <div class="role-card-back" style="min-height:90px;height:100%;padding:1.25rem;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);">
-              <p class="font-serif" style="color:var(--green);font-size:1.1rem;font-weight:700;">${q.answer}</p>
+            <div class="role-card-back" style="min-height:90px;height:100%;padding:1.25rem;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);${isDesktop ? 'padding:2rem;' : ''}">
+              <p class="font-serif" style="color:var(--green);font-size:1.1rem;font-weight:700;${isDesktop ? 'font-size:1.5rem;' : ''}">${q.answer}</p>
             </div>
           </div>
         </div>
@@ -197,26 +239,74 @@ function openQuestion(ci, qi) {
         <p class="input-label mb-2">Award $${q.value} to:</p>
         <div class="flex flex-col gap-2" id="teamAwardList">
           ${JP.teams.map((t, ti) => `
-            <button class="vote-btn" onclick="awardPoints(${ti}, ${q.value}, ${ci}, ${qi})">
+            <button class="vote-btn" style="${isDesktop ? 'padding:1rem;font-size:1.25rem;' : ''}" onclick="awardPoints(${ti}, ${q.value}, ${ci}, ${qi})">
               <div class="avatar">${getInitials(t.name)}</div>
               <span>${t.name}</span>
-              <span class="score-value" style="margin-left:auto;font-size:1rem;">$${t.score}</span>
+              <span class="score-value" style="margin-left:auto;font-size:1rem;${isDesktop ? 'font-size:1.25rem;' : ''}">$${t.score}</span>
             </button>
           `).join('')}
         </div>
-        <button class="btn btn-ghost btn-sm btn-full mt-2" onclick="markAnswered(${ci}, ${qi}, false)">
+        <button class="btn btn-ghost btn-sm btn-full mt-2" onclick="markAnswered(${ci}, ${qi}, false)" style="${isDesktop ? 'padding:1rem;' : ''}">
           No one gets points
         </button>
       </div>
 
-      <button class="btn btn-ghost btn-full" onclick="showBoard()">← Back to Board</button>
+      <button class="btn btn-ghost btn-full" onclick="stopQuestionTimer(); showBoard()" style="${isDesktop ? 'padding:1.5rem;font-size:1.25rem;' : ''}">← Back to Board</button>
     </div>
   `);
+
+  if (JP.timerDuration) {
+    startQuestionTimer(JP.timerDuration);
+  }
+}
+
+let _jpTimerInterval = null;
+
+function startQuestionTimer(duration) {
+  stopQuestionTimer();
+  let timeLeft = duration;
+  const fill = document.getElementById('jpTimerFill');
+  const text = document.getElementById('jpTimerText');
+  if (!fill || !text) return;
+
+  _jpTimerInterval = setInterval(() => {
+    timeLeft -= 0.1;
+    if (timeLeft <= 0) {
+      timeLeft = 0;
+      stopQuestionTimer();
+      text.textContent = "Time's up!";
+      text.style.color = "var(--red)";
+      fill.style.width = "0%";
+      haptic('heavy');
+      revealAnswer(); // Auto reveal when time is out
+      return;
+    }
+
+    const pct = (timeLeft / duration) * 100;
+    fill.style.width = `${pct}%`;
+    text.textContent = Math.ceil(timeLeft) + "s";
+
+    if (pct < 25) {
+      fill.style.backgroundColor = "var(--red)";
+      text.style.color = "var(--red)";
+    } else if (pct < 50) {
+      fill.style.backgroundColor = "var(--orange)";
+      text.style.color = "var(--orange)";
+    }
+  }, 100);
+}
+
+function stopQuestionTimer() {
+  if (_jpTimerInterval) {
+    clearInterval(_jpTimerInterval);
+    _jpTimerInterval = null;
+  }
 }
 
 function revealAnswer() {
   const card = document.getElementById('ansCard');
   if (card.classList.contains('flipped')) return;
+  stopQuestionTimer();
   card.classList.add('flipped');
   haptic('medium');
   setTimeout(() => {

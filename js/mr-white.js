@@ -104,7 +104,28 @@ function startGame() {
   MW.votes = {};
   MW.players = new Array(_setupPlayerCount).fill('');
 
-  showNameEntry(0);
+  showPassPhone(0);
+}
+
+// ── SCREEN: Pass Phone ──────────────────────────────────────
+function showPassPhone(idx) {
+  MW.phase = 'pass-phone';
+  
+  render(`
+    <div class="stagger text-center" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh;">
+      <span style="font-size:4rem; margin-bottom:1rem; animation:bounce 2s infinite">🙈</span>
+      <h2 class="font-serif text-gold2 mb-2">Pass the Phone</h2>
+      <p class="text-muted mb-4">Hand the device to <strong style="color:var(--text)">Player ${idx + 1}</strong>.</p>
+      
+      <button class="btn btn-primary btn-lg" onclick="showNameEntry(${idx})" style="width:100%; max-width:300px;">
+        I'm Ready!
+      </button>
+      
+      <div class="progress-bar w-full mt-4" style="max-width:300px;margin-left:auto;margin-right:auto;">
+        <div class="progress-fill" style="width:${((idx)/_setupPlayerCount)*100}%"></div>
+      </div>
+    </div>
+  `);
 }
 
 function reshuffleWord() {
@@ -254,7 +275,7 @@ function flipReveal(idx, isMW) {
     const nextBtn = document.createElement('div');
     nextBtn.className = 'mt-3 animate-slide-up';
     if (nextIdx < MW.players.length) {
-      nextBtn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showNameEntry(${nextIdx})">
+      nextBtn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showPassPhone(${nextIdx})">
         Next Player →
       </button>`;
     } else {

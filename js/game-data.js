@@ -209,14 +209,15 @@ const DEFAULT_DATA = {
       { id: "wanderer",     name: "Wanderer",      team: "neutral", icon: "🦅",  count: 0, description: "You have no allegiance. Survive to the final 3 to win — regardless of good or evil." }
     ],
     roleDistribution: {
-      5:  { disciple: 2, prophet: 1, false_prophet: 1, pharaoh: 1 },
-      6:  { disciple: 3, prophet: 1, false_prophet: 1, pharaoh: 1 },
-      7:  { disciple: 3, prophet: 1, healer: 1, false_prophet: 1, pharaoh: 1 },
-      8:  { disciple: 4, prophet: 1, healer: 1, false_prophet: 1, pharaoh: 1 },
-      9:  { disciple: 4, prophet: 1, healer: 1, false_prophet: 2, pharaoh: 1 },
-      10: { disciple: 4, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1 },
-      11: { disciple: 5, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1 },
-      12: { disciple: 5, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, sorcerer: 1 }
+      //        Good roles                              Evil roles                     Neutral   Evil%
+      5:  { disciple: 2, prophet: 1,                   false_prophet: 1, pharaoh: 1                    }, // 3G 2E  — 40%
+      6:  { disciple: 2, prophet: 1, healer: 1,        false_prophet: 1, pharaoh: 1                    }, // 4G 2E  — 33%
+      7:  { disciple: 3, prophet: 1, healer: 1,        false_prophet: 1, pharaoh: 1                    }, // 5G 2E  — 29%
+      8:  { disciple: 2, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1                 }, // 5G 3E  — 37%
+      9:  { disciple: 3, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1                 }, // 6G 3E  — 33%
+      10: { disciple: 3, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, wanderer: 1    }, // 6G 3E 1N — 30%
+      11: { disciple: 3, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, sorcerer: 1, wanderer: 1 }, // 6G 4E 1N — 36%
+      12: { disciple: 4, prophet: 1, healer: 1, judge: 1, false_prophet: 2, pharaoh: 1, sorcerer: 1, wanderer: 1 }  // 7G 4E 1N — 33%
     }
   },
 

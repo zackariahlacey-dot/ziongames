@@ -444,6 +444,7 @@ select.input { cursor: pointer; }
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.4,0,0.2,1);
   will-change: transform;
+  min-height: 280px;
 }
 .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
 .flip-front, .flip-back {
@@ -671,24 +672,26 @@ select.input { cursor: pointer; }
   background: linear-gradient(145deg, var(--bg3), var(--bg2));
   border: 1px solid var(--border);
   border-radius: var(--r);
-  height: 200px;
+  min-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 0.75rem;
+  padding: 1.5rem;
 }
 .role-card-back {
   background: linear-gradient(145deg, var(--bg2), var(--bg3));
   border: 1px solid var(--border2);
   border-radius: var(--r);
-  height: 200px;
+  min-height: 280px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.25rem;
+  gap: 0.6rem;
+  padding: 1.5rem 1.75rem;
   text-align: center;
   box-shadow: var(--shadow-gold);
 }

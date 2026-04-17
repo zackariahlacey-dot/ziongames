@@ -177,15 +177,15 @@ function openQuestion(ci, qi) {
 
       <!-- Answer (hidden by default) -->
       <div class="flip-card w-full mb-4" id="ansCard" onclick="revealAnswer()">
-        <div class="flip-inner">
+        <div class="flip-inner" style="min-height:0;">
           <div class="flip-front">
-            <div class="role-card-front" style="height:100px;">
+            <div class="role-card-front" style="min-height:90px;padding:1.25rem;">
               <span style="font-size:1.5rem">🤔</span>
               <p class="text-muted text-sm">Tap to reveal answer</p>
             </div>
           </div>
           <div class="flip-back">
-            <div class="role-card-back" style="height:100px;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);">
+            <div class="role-card-back" style="min-height:90px;height:100%;padding:1.25rem;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);">
               <p class="font-serif" style="color:var(--green);font-size:1.1rem;font-weight:700;">${q.answer}</p>
             </div>
           </div>
@@ -334,15 +334,15 @@ function showFinalQuestion() {
       <p class="text-muted text-sm mb-4">All teams write their answers secretly, then reveal simultaneously.</p>
 
       <div class="flip-card w-full mb-4" id="finalAnsCard" onclick="revealFinalAnswer()">
-        <div class="flip-inner">
+        <div class="flip-inner" style="min-height:0;">
           <div class="flip-front">
-            <div class="role-card-front" style="height:90px;">
+            <div class="role-card-front" style="min-height:90px;padding:1.25rem;">
               <span style="font-size:1.5rem">🤫</span>
               <p class="text-muted text-sm">Tap after all teams write their answers</p>
             </div>
           </div>
           <div class="flip-back">
-            <div class="role-card-back" style="height:90px;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);">
+            <div class="role-card-back" style="min-height:90px;height:100%;padding:1.25rem;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);">
               <p class="font-serif" style="color:var(--green);font-size:1.1rem;font-weight:700;">${finalQ.answer}</p>
             </div>
           </div>

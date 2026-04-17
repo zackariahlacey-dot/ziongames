@@ -119,6 +119,30 @@ function reshuffleWord() {
   const btn = document.getElementById('shuffleBtn');
   if (btn) { btn.textContent = '✓ New word ready!'; btn.disabled = true; btn.style.opacity = '0.5'; }
   showToast('New word picked!', 'success');
+
+  // Update Player 1's card instantly if it's already flipped
+  const card = document.getElementById('revCard');
+  if (card && card.classList.contains('flipped')) {
+    const isMW = revealIndex === MW.mrWhiteIndex;
+    const back = document.getElementById('revBack');
+    if (back) {
+      if (isMW) {
+        back.innerHTML = `
+          <span style="font-size:2rem;margin-bottom:0.5rem;animation:float 3s ease-in-out infinite">📜</span>
+          <p class="text-muted text-sm" style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;">Your Word is</p>
+          <p class="word-text">${MW.mrWhiteWord}</p>
+          <p class="text-muted text-sm mt-2">Remember it — don't say it aloud!</p>
+        `;
+      } else {
+        back.innerHTML = `
+          <span style="font-size:2rem;margin-bottom:0.5rem;animation:float 3s ease-in-out infinite">📜</span>
+          <p class="text-muted text-sm" style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;">Your Word is</p>
+          <p class="word-text">${MW.word}</p>
+          <p class="text-muted text-sm mt-2">Remember it — don't say it aloud!</p>
+        `;
+      }
+    }
+  }
 }
 
 // ── SCREEN: Name Entry (Sequential) ─────────────────────────

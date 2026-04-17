@@ -9,8 +9,97 @@
   <title>Biblical Jeopardy — True Bible Games</title>
   <link rel="stylesheet" href="/css/styles.css"/>
   <style>
-    .jeopardy-board { overflow-x: auto; }
-    .jeopardy-scroll { display: grid; gap: 6px; }
+    /* ── Timer bar (used in question screen) ── */
+    .timer-bar {
+      height: 10px;
+      background: var(--bg3);
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .timer-bar-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 0.9s linear, background 0.5s;
+    }
+
+    /* ── Desktop / Landscape Layout ── */
+    @media (min-width: 900px) {
+      /* Full-screen dark background */
+      body { background: var(--bg); }
+
+      /* Header goes full-width */
+      .app-header-inner { max-width: 100%; padding: 0 2rem; }
+
+      /* Main layout becomes a side-by-side two-column */
+      .jp-desktop-layout {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 1.5rem;
+        align-items: start;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem 2rem;
+      }
+
+      /* Board fills the left column */
+      .jeopardy-board-wrap {
+        width: 100%;
+      }
+
+      /* Score sidebar on the right */
+      .jp-score-sidebar {
+        position: sticky;
+        top: 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      /* Bigger cells on desktop */
+      .jeopardy-cell {
+        min-height: 72px;
+        font-size: 1.4rem;
+      }
+      .jeopardy-cell.header {
+        min-height: 56px;
+        font-size: 0.85rem;
+      }
+
+      /* Question screen — centered card */
+      .jp-question-desktop {
+        max-width: 700px;
+        margin: 2rem auto;
+      }
+
+      /* Setup screen centered */
+      .jp-setup-wrap {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+    }
+
+    /* Force landscape hint on tablets in portrait */
+    @media (max-width: 899px) and (orientation: portrait) and (min-width: 600px) {
+      .jp-landscape-hint {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--gold-dim);
+        border: 1px solid var(--border2);
+        border-radius: var(--r-sm);
+        padding: 0.6rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.8rem;
+        color: var(--gold2);
+      }
+    }
+    @media (min-width: 900px), (orientation: landscape) {
+      .jp-landscape-hint { display: none !important; }
+    }
+    @media (max-width: 599px) {
+      .jp-landscape-hint { display: none !important; }
+    }
   </style>
 </head>
 <body>

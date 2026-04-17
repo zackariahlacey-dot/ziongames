@@ -1,4 +1,4 @@
-const CACHE = 'zion-games-v4';
+const CACHE = 'true-bible-games-v1';
 const ASSETS = [
   '/index.html',
   '/css/styles.css',

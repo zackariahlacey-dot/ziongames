@@ -264,6 +264,7 @@ function showCHActorScreen() {
 let _chHintShown = false;
 function showCHHintPreview() {
   const card = CH.deck[CH.deckIdx];
+  if (!card?.hint) return;
   _chHintShown = true;
   const hint = document.createElement('div');
   hint.className = 'card animate-slide-up';

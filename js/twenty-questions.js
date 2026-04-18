@@ -139,7 +139,7 @@ function drawTQCard() {
     (data.twentyQuestions?.[catId] || []).forEach(card => pool.push({ ...card, category: catId }));
   });
   if (!pool.length) { showToast('No cards found for selected categories', 'error'); return; }
-  if (!TQ.deck.length || TQ.deck.every(c => TQ.currentCard && c.name === TQ.currentCard.name)) {
+  if (!TQ.deck.length || (TQ.currentCard && TQ.deck.every(c => c.name === TQ.currentCard.name))) {
     TQ.deck = shuffle([...pool]);
   }
   TQ.currentCard = TQ.deck.pop() || pool[Math.floor(Math.random() * pool.length)];

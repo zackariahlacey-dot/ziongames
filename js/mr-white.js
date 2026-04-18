@@ -155,7 +155,7 @@ function showPassPhone(idx) {
       </button>
       
       <div class="progress-bar w-full mt-4" style="max-width:300px;margin-left:auto;margin-right:auto;">
-        <div class="progress-fill" style="width:${((idx)/_setupPlayerCount)*100}%"></div>
+        <div class="progress-fill" style="width:${((idx+1)/_setupPlayerCount)*100}%"></div>
       </div>
     </div>
   `);

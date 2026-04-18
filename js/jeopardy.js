@@ -609,8 +609,8 @@ function showFinalQuestion() {
     <div class="stagger text-center">
       <div class="card card-glow p-3 mb-4" style="padding:2rem;">
         <span style="font-size:2rem;display:block;margin-bottom:0.75rem;animation:float 3s ease-in-out infinite;">⭐</span>
-        <p class="badge badge-gold mb-3" style="display:inline-flex;">Final Jeopardy — ${finalCat.name}</p>
-        <p class="font-serif" style="font-size:clamp(1rem,4vw,1.25rem);color:var(--text);line-height:1.6;">${finalQ.question}</p>
+        <p class="badge badge-gold mb-3" style="display:inline-flex;">Final Jeopardy — ${JP.currentQ.cat.name}</p>
+        <p class="font-serif" style="font-size:clamp(1rem,4vw,1.25rem);color:var(--text);line-height:1.6;">${JP.currentQ.q.question}</p>
       </div>
 
       <p class="text-muted text-sm mb-4">All teams write their answers secretly, then reveal simultaneously.</p>
@@ -625,7 +625,7 @@ function showFinalQuestion() {
           </div>
           <div class="flip-back">
             <div class="role-card-back" style="min-height:90px;height:100%;padding:1.25rem;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);">
-              <p class="font-serif" style="color:var(--green);font-size:1.1rem;font-weight:700;">${finalQ.answer}</p>
+              <p class="font-serif" style="color:var(--green);font-size:1.1rem;font-weight:700;">${JP.currentQ.q.answer}</p>
             </div>
           </div>
         </div>

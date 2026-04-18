@@ -61,6 +61,7 @@
       <div class="tabs mb-4" id="adminTabs2">
         <button class="tab" onclick="showTab('charades',this)">Charades</button>
         <button class="tab" onclick="showTab('twentyq',this)">20 Questions</button>
+        <button class="tab" onclick="showTab('headsup',this)">Heads Up</button>
         <button class="tab" onclick="showTab('settings',this)">Settings</button>
       </div>
 
@@ -122,6 +123,15 @@
           <p class="text-muted text-sm">Each card has a name, description, and 3 facts. Grouped by category.</p>
         </div>
         <div id="twentyqEditor"></div>
+      </div>
+
+      <!-- Heads Up Tab -->
+      <div id="tab-headsup" class="hidden stagger">
+        <div class="mb-3">
+          <h3 class="font-serif text-gold2 mb-1">Bible Heads Up Words</h3>
+          <p class="text-muted text-sm">Each category is a list of words players must guess.</p>
+        </div>
+        <div id="headsUpEditor"></div>
       </div>
 
       <!-- Settings Tab -->

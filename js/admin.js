@@ -51,6 +51,7 @@ function showTab(id, el) {
   // Lazy-load editors
   if (id === 'charades') loadCharadesEditor();
   if (id === 'twentyq')  loadTwentyQEditor();
+  if (id === 'headsup')  loadHeadsUpEditor();
 }
 
 // ── Section toggle ─────────────────────────────────────────
@@ -703,6 +704,89 @@ function removeTQCard(catId, idx) {
   saveGameData(data);
   renderTQCards(catId, data.twentyQuestions?.[catId] || []);
   if (removed) showToast(`"${removed.name}" removed`);
+}
+
+// ── Heads Up Editor ───────────────────────────────────────────
+const HU_ADMIN_CATS = [
+  { id: 'people',   label: 'Bible People',   icon: '👤' },
+  { id: 'places',   label: 'Bible Places',   icon: '🏛️' },
+  { id: 'stories',  label: 'Bible Stories',  icon: '📖' },
+  { id: 'miracles', label: 'Miracles',       icon: '✨' },
+  { id: 'books',    label: 'Books of Bible', icon: '📜' },
+  { id: 'animals',  label: 'Bible Animals',  icon: '🦁' },
+  { id: 'parables', label: 'Parables',       icon: '🌱' },
+  { id: 'objects',  label: 'Sacred Objects', icon: '⚗️' },
+];
+
+function loadHeadsUpEditor() {
+  const data = getGameData();
+  const container = document.getElementById('headsUpEditor');
+  if (!container) return;
+
+  container.innerHTML = HU_ADMIN_CATS.map(cat => {
+    const words = data.headsUp?.[cat.id] || [];
+    return `
+      <div class="admin-section mb-3">
+        <div class="admin-section-header" onclick="toggleSection('hu-${cat.id}')">
+          <div class="flex items-center gap-2">
+            <span>${cat.icon}</span>
+            <span class="font-bold">${cat.label}</span>
+            <span class="badge badge-gold" id="hu-${cat.id}-count">${words.length} words</span>
+          </div>
+          <svg id="hu-${cat.id}-chevron" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="admin-section-body" id="hu-${cat.id}-body" style="display:none;">
+          <div class="flex flex-col gap-1 mb-3" id="hu-${cat.id}-list"></div>
+          <div class="card" style="background:var(--bg3);padding:0.85rem;">
+            <p class="input-label mb-2">Add Word</p>
+            <div class="flex gap-2">
+              <input class="input flex-1" placeholder="e.g. Moses…" id="hu-${cat.id}-input"
+                onkeydown="if(event.key==='Enter')addHUWord('${cat.id}')"/>
+              <button class="btn btn-primary btn-sm" onclick="addHUWord('${cat.id}')">+ Add</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  HU_ADMIN_CATS.forEach(cat => renderHUWords(cat.id, data.headsUp?.[cat.id] || []));
+}
+
+function renderHUWords(catId, words) {
+  const container = document.getElementById(`hu-${catId}-list`);
+  const countEl   = document.getElementById(`hu-${catId}-count`);
+  if (!container) return;
+  if (countEl) countEl.textContent = `${words.length} words`;
+  container.innerHTML = words.map((w, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0.65rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);">
+      <span class="text-sm">${w}</span>
+      <button onclick="removeHUWord('${catId}',${i})" style="background:none;border:none;color:var(--text3);font-size:1.1rem;cursor:pointer;padding:0;line-height:1;">×</button>
+    </div>
+  `).join('');
+}
+
+function addHUWord(catId) {
+  const input = document.getElementById(`hu-${catId}-input`);
+  const word  = input?.value?.trim();
+  if (!word) { showToast('Enter a word', 'error'); return; }
+
+  const data = getGameData();
+  if (!data.headsUp)         data.headsUp         = {};
+  if (!data.headsUp[catId])  data.headsUp[catId]  = [];
+  data.headsUp[catId].push(word);
+  saveGameData(data);
+  renderHUWords(catId, data.headsUp[catId]);
+  if (input) input.value = '';
+  input?.focus();
+  showToast(`"${word}" added`, 'success');
+}
+
+function removeHUWord(catId, idx) {
+  const data    = getGameData();
+  const removed = data.headsUp?.[catId]?.splice(idx, 1)?.[0];
+  saveGameData(data);
+  renderHUWords(catId, data.headsUp?.[catId] || []);
+  if (removed) showToast(`"${removed}" removed`);
 }
 
 // ── Init ──────────────────────────────────────────────────

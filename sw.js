@@ -1,12 +1,12 @@
-const CACHE = 'true-bible-games-v3';
+const CACHE = 'true-bible-games-v4';
 const ASSETS = [
   '/index.html',
   '/css/styles.css',
   '/js/app.js', '/js/game-data.js', '/js/scoreboard.js',
   '/js/mr-white.js', '/js/mafia.js', '/js/jeopardy.js', '/js/taboo.js', '/js/admin.js',
-  '/js/charades.js', '/js/twenty-questions.js', '/js/seven-up.js',
+  '/js/charades.js', '/js/twenty-questions.js', '/js/seven-up.js', '/js/heads-up.js',
   '/games/mr-white.html', '/games/mafia.html', '/games/jeopardy.html', '/games/taboo.html',
-  '/games/charades.html', '/games/twenty-questions.html', '/games/seven-up.html',
+  '/games/charades.html', '/games/twenty-questions.html', '/games/seven-up.html', '/games/heads-up.html',
   '/admin/index.html', '/scoreboard.html', '/buzzer.html',
   '/icons/icon-192.svg', '/icons/icon-512.svg'
 ];

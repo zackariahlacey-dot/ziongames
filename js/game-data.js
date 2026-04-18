@@ -552,6 +552,77 @@ const DEFAULT_DATA = {
       { name: "The Two Builders", description: "Where you build determines whether you survive the storm", facts: ["Both men built houses — one on rock, one on sand", "The rain, floods, and winds came and struck both houses", "The one on rock stood; the one on sand fell with a great crash"] },
       { name: "The Lost Coin", description: "Heaven celebrates every single sinner who is found", facts: ["A woman had ten silver coins and lost one", "She lit a lamp and swept the whole house searching carefully", "When she found it she called her neighbors and friends to celebrate"] }
     ]
+  },
+
+  headsUp: {
+    people: [
+      "Moses", "David", "Solomon", "Abraham", "Noah", "Elijah", "Samson",
+      "Jonah", "Daniel", "Joseph", "Mary", "Peter", "Paul", "John the Baptist",
+      "Ruth", "Esther", "Goliath", "Pharaoh", "Nicodemus", "Zacchaeus",
+      "Lazarus", "Gideon", "Deborah", "Joshua", "King Herod"
+    ],
+    places: [
+      "Jerusalem", "Bethlehem", "Egypt", "Nazareth", "Jericho", "Babylon",
+      "Sea of Galilee", "Mount Sinai", "Garden of Eden", "Calvary", "Bethany",
+      "Antioch", "Corinth", "Nineveh", "Damascus", "Samaria",
+      "The Red Sea", "The Jordan River", "Gethsemane", "Canaan",
+      "Patmos", "Mount Carmel", "Sodom", "The Wilderness", "Rome"
+    ],
+    stories: [
+      "Noah's Ark", "Tower of Babel", "Burning Bush", "Ten Plagues",
+      "Crossing the Red Sea", "Battle of Jericho", "David vs Goliath",
+      "Jonah and the Whale", "Daniel in the Lions Den",
+      "Elijah vs Prophets of Baal", "The Last Supper", "The Crucifixion",
+      "The Resurrection", "Feeding Five Thousand", "Walking on Water",
+      "The Transfiguration", "Road to Damascus", "Pentecost",
+      "Samson and Delilah", "Joseph and His Brothers",
+      "Jesus Raises Lazarus", "Paul and Silas in Prison",
+      "Abraham and Isaac", "The Exodus", "The Great Flood"
+    ],
+    miracles: [
+      "Water into Wine", "Feeding Five Thousand", "Walking on Water",
+      "Healing a Blind Man", "Raising Lazarus", "Parting the Red Sea",
+      "Manna from Heaven", "Sun Stands Still", "Walls of Jericho Fall",
+      "Three Men in the Fiery Furnace", "Daniel Survives the Lions",
+      "Elijah Calls Fire from Heaven", "Oil that Never Runs Out",
+      "Jesus Heals Ten Lepers", "Water from a Rock",
+      "Calming the Storm", "The Floating Axe Head",
+      "Healing a Paralyzed Man", "Coin in the Fish's Mouth",
+      "Healing a Leper", "Fig Tree Withers", "Feeding Four Thousand",
+      "Healing Blind Bartimaeus", "Peter Walks on Water", "Iron Axe Head Floats"
+    ],
+    books: [
+      "Genesis", "Exodus", "Psalms", "Proverbs", "Isaiah", "Daniel",
+      "Matthew", "Mark", "Luke", "John", "Acts", "Romans",
+      "Revelation", "Jonah", "Ruth", "Esther", "Job", "Ecclesiastes",
+      "Song of Solomon", "Hebrews", "James", "Numbers", "Deuteronomy",
+      "Joshua", "Judges"
+    ],
+    animals: [
+      "Dove", "Serpent", "Donkey", "Lion", "Lamb", "Fish", "Raven",
+      "Eagle", "Camel", "Locust", "Whale", "Bear", "Ox", "Goat",
+      "Horse", "Sparrow", "Frog", "Cow", "Ram", "Wolf",
+      "Rooster", "Quail", "Leviathan", "Pigeon", "Fox"
+    ],
+    parables: [
+      "Good Samaritan", "Prodigal Son", "Lost Sheep", "Ten Virgins",
+      "The Talents", "Mustard Seed", "The Sower", "Pearl of Great Price",
+      "Wedding Banquet", "Rich Fool", "Two Builders", "Lost Coin",
+      "Rich Man and Lazarus", "Unmerciful Servant", "Workers in the Vineyard",
+      "Pharisee and Tax Collector", "Hidden Treasure", "Fishing Net",
+      "Vine and Branches", "Two Sons", "Great Banquet",
+      "Persistent Widow", "Friend at Midnight", "Shrewd Manager", "Ten Minas"
+    ],
+    objects: [
+      "Ark of the Covenant", "Ten Commandments", "Staff of Moses",
+      "Crown of Thorns", "Golden Calf", "Goliath's Sword",
+      "Manna", "Coat of Many Colors", "Samson's Hair", "Gideon's Fleece",
+      "David's Sling", "Elijah's Mantle", "Trumpets of Jericho",
+      "Pillar of Fire", "Fiery Chariot", "Star of Bethlehem",
+      "Joseph's Silver Cup", "The Forbidden Fruit", "Widow's Two Mites",
+      "Solomon's Temple", "Stone Tablets", "Jawbone of a Donkey",
+      "The Burning Bush", "Angel's Flaming Sword", "Harp of David"
+    ]
   }
 };
 
@@ -563,6 +634,7 @@ function loadGameData() {
       if (!data.taboo) data.taboo = JSON.parse(JSON.stringify(DEFAULT_DATA.taboo));
       if (!data.charades) data.charades = JSON.parse(JSON.stringify(DEFAULT_DATA.charades));
       if (!data.twentyQuestions) data.twentyQuestions = JSON.parse(JSON.stringify(DEFAULT_DATA.twentyQuestions));
+      if (!data.headsUp) data.headsUp = JSON.parse(JSON.stringify(DEFAULT_DATA.headsUp));
       if (!data.jeopardy?.finalJeopardy) {
         if (data.jeopardy) data.jeopardy.finalJeopardy = JSON.parse(JSON.stringify(DEFAULT_DATA.jeopardy.finalJeopardy));
       }
@@ -602,5 +674,12 @@ function updateJeopardyCategories(categories) {
 function updateMafiaRoles(roles) {
   const data = loadGameData();
   data.mafia.roles = roles;
+  saveGameData(data);
+}
+
+function updateHeadsUpWords(catId, words) {
+  const data = loadGameData();
+  if (!data.headsUp) data.headsUp = {};
+  data.headsUp[catId] = words;
   saveGameData(data);
 }

@@ -20,7 +20,7 @@ const root = document.getElementById('appRoot');
 
 // ── Render helpers ────────────────────────────────────────
 function render(html) {
-  root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.5rem;padding-bottom:2rem;">${html}</div>`;
+  window.scrollTo(0,0); root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.5rem;padding-bottom:2rem;">${html}</div>`;
 }
 
 // ── Setup state ───────────────────────────────────────────
@@ -42,6 +42,8 @@ function renderSetupScreen() {
         <p class="text-muted text-sm mt-1">Everyone shares a secret word — except Mr. White</p>
       </div>
 
+      <button class="btn btn-ghost btn-sm btn-full mb-3" onclick="showMWDirections()">📖 How to Play</button>
+
       <!-- Difficulty -->
       <div class="card mb-3">
         <p class="input-label mb-2">Difficulty</p>
@@ -60,9 +62,7 @@ function renderSetupScreen() {
         <p class="input-label mb-3 text-center">Number of Players</p>
         <div class="flex items-center justify-center gap-4">
           <button class="btn btn-secondary btn-icon" onclick="adjustCount(-1)" style="font-size:1.5rem;">-</button>
-          <span style="font-size:2rem;font-weight:700;font-family:var(--font-h);color:var(--text);min-width:3rem;text-align:center;">
-            ${_setupPlayerCount}
-          </span>
+          <span id="mwCountDisplay" style="font-size:2rem;font-weight:700;font-family:var(--font-h);color:var(--text);min-width:3rem;text-align:center;">${_setupPlayerCount}</span>
           <button class="btn btn-secondary btn-icon" onclick="adjustCount(1)" style="font-size:1.5rem;">+</button>
         </div>
         <p class="text-muted text-center text-sm mt-3">3 to 10 players</p>
@@ -72,6 +72,37 @@ function renderSetupScreen() {
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
         Start Game
       </button>
+    </div>
+  `);
+}
+
+function showMWDirections() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="overlay" id="mwDirOverlay" onclick="if(event.target.id==='mwDirOverlay')this.remove()">
+      <div class="modal" style="max-height:80vh;overflow-y:auto;">
+        <div class="modal-handle"></div>
+        <h3 class="font-serif text-gold2 mb-3">📜 How to Play — Biblical Mr. White</h3>
+        <div class="flex flex-col gap-3 text-sm" style="color:var(--text2);line-height:1.7;">
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🎯 Goal</p>
+            <p>All players share the same secret biblical word — except Mr. White, who gets a similar but different word. Citizens try to expose Mr. White; Mr. White tries to blend in.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🗣️ Each Round</p>
+            <p>Going around the circle, each player says one word or short clue that hints at their word — without saying it directly. Listen carefully for someone who sounds off!</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">⚖️ Voting</p>
+            <p>After clues, everyone votes on who they think is Mr. White. Most votes = eliminated. If they're Mr. White, citizens win — but Mr. White gets one chance to guess the citizens' word!</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🏆 Winning</p>
+            <p><strong style="color:var(--green);">Citizens win</strong> when Mr. White is eliminated and fails to guess the word.<br/>
+            <strong style="color:var(--red);">Mr. White wins</strong> by surviving to the final 2, or by correctly guessing the word when caught.</p>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-4" onclick="document.getElementById('mwDirOverlay').remove()">Got it!</button>
+      </div>
     </div>
   `);
 }
@@ -86,7 +117,9 @@ function adjustCount(delta) {
   _setupPlayerCount += delta;
   if (_setupPlayerCount < 3) _setupPlayerCount = 3;
   if (_setupPlayerCount > 10) _setupPlayerCount = 10;
-  renderSetupScreen();
+  const el = document.getElementById('mwCountDisplay');
+  if (el) el.textContent = _setupPlayerCount;
+  else renderSetupScreen();
 }
 
 function startGame() {

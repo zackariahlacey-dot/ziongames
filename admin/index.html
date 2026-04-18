@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
   <meta name="theme-color" content="#d4a017"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -50,12 +50,17 @@
   <!-- Main admin UI -->
   <main class="page safe-bottom hidden" id="adminMain">
     <div class="container" style="padding-top:1.25rem;padding-bottom:2rem;">
-      <!-- Tabs -->
-      <div class="tabs mb-4" id="adminTabs">
+      <!-- Tabs row 1 -->
+      <div class="tabs mb-1" id="adminTabs">
         <button class="tab active" onclick="showTab('mrwhite',this)">Mr. White</button>
         <button class="tab" onclick="showTab('jeopardy',this)">Jeopardy</button>
         <button class="tab" onclick="showTab('mafia',this)">Mafia</button>
         <button class="tab" onclick="showTab('taboo',this)">Taboo</button>
+      </div>
+      <!-- Tabs row 2 -->
+      <div class="tabs mb-4" id="adminTabs2">
+        <button class="tab" onclick="showTab('charades',this)">Charades</button>
+        <button class="tab" onclick="showTab('twentyq',this)">20 Questions</button>
         <button class="tab" onclick="showTab('settings',this)">Settings</button>
       </div>
 
@@ -99,6 +104,24 @@
           <button class="btn btn-primary btn-sm" onclick="addTabooCard()">+ Card</button>
         </div>
         <div id="tabooCardList" class="flex flex-col gap-3"></div>
+      </div>
+
+      <!-- Charades Tab -->
+      <div id="tab-charades" class="hidden stagger">
+        <div class="mb-3">
+          <h3 class="font-serif text-gold2 mb-1">Charades Cards</h3>
+          <p class="text-muted text-sm">Each card has an act description and an optional hint. Cards are grouped by category.</p>
+        </div>
+        <div id="charadesEditor"></div>
+      </div>
+
+      <!-- 20 Questions Tab -->
+      <div id="tab-twentyq" class="hidden stagger">
+        <div class="mb-3">
+          <h3 class="font-serif text-gold2 mb-1">20 Questions Cards</h3>
+          <p class="text-muted text-sm">Each card has a name, description, and 3 facts. Grouped by category.</p>
+        </div>
+        <div id="twentyqEditor"></div>
       </div>
 
       <!-- Settings Tab -->

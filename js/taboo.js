@@ -22,7 +22,104 @@ const TB = {
 const root = document.getElementById('appRoot');
 
 function render(html) {
-  root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.25rem;padding-bottom:2rem;">${html}</div>`;
+  window.scrollTo(0,0); root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.25rem;padding-bottom:2rem;">${html}</div>`;
+}
+
+// ── Multi-device buzzer state ──────────────────────────────
+let _tbMultiDevice = false;
+let _tbPeer = null;
+let _tbBuzzerConn = null;
+let _tbPeerReady = false;
+
+function toggleMultiDevice() {
+  _tbMultiDevice = !_tbMultiDevice;
+  if (_tbMultiDevice) {
+    initTBPeer();
+  } else {
+    if (_tbPeer) { try { _tbPeer.destroy(); } catch(_) {} _tbPeer = null; }
+    _tbBuzzerConn = null;
+    _tbPeerReady = false;
+  }
+  renderSetup();
+}
+
+function initTBPeer() {
+  const load = (cb) => {
+    if (typeof Peer !== 'undefined') { cb(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+    s.onload = cb;
+    s.onerror = () => { showToast('Could not load buzzer library', 'error'); _tbMultiDevice = false; renderSetup(); };
+    document.head.appendChild(s);
+  };
+  load(() => {
+    if (_tbPeer) { try { _tbPeer.destroy(); } catch(_) {} }
+    _tbPeer = new Peer();
+    _tbPeer.on('open', id => {
+      _tbPeerReady = true;
+      updateBuzzerStatus('ready', id);
+    });
+    _tbPeer.on('connection', conn => {
+      _tbBuzzerConn = conn;
+      conn.on('open', () => updateBuzzerStatus('connected', _tbPeer?.id));
+      conn.on('data', msg => { if (msg === 'buzz') remoteBuzz(); });
+      conn.on('close', () => { _tbBuzzerConn = null; updateBuzzerStatus('ready', _tbPeer?.id); });
+    });
+    _tbPeer.on('error', () => { _tbPeerReady = false; updateBuzzerStatus('error', null); });
+  });
+}
+
+function updateBuzzerStatus(status, peerId) {
+  const el = document.getElementById('buzzerStatus');
+  if (!el) return;
+  if (status === 'ready' && peerId) {
+    const url = `${location.origin}/buzzer.html?host=${peerId}`;
+    el.innerHTML = `
+      <p class="text-sm text-center mb-2" style="color:var(--green);">✅ Buzzer ready — share this link with the opposing team:</p>
+      <canvas id="buzzerQR" style="display:block;margin:0 auto 0.75rem;border-radius:8px;"></canvas>
+      <p class="text-muted text-xs text-center" style="word-break:break-all;">${url}</p>
+      <p class="text-muted text-xs text-center mt-1">Waiting for opposing team to connect…</p>
+    `;
+    generateQR(url);
+  } else if (status === 'connected') {
+    el.innerHTML = `<p class="text-sm text-center" style="color:var(--green);">📡 Opposing team connected — buzzer is live!</p>`;
+  } else if (status === 'error') {
+    el.innerHTML = `<p class="text-sm text-center" style="color:var(--red);">⚠️ Connection error. Check your internet connection.</p>`;
+  } else {
+    el.innerHTML = `<p class="text-sm text-center text-muted">⏳ Connecting to buzzer server…</p>`;
+  }
+}
+
+function generateQR(url) {
+  const load = (cb) => {
+    if (typeof QRCode !== 'undefined') { cb(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js';
+    s.onload = cb;
+    document.head.appendChild(s);
+  };
+  load(() => {
+    const canvas = document.getElementById('buzzerQR');
+    if (canvas && typeof QRCode !== 'undefined') {
+      QRCode.toCanvas(canvas, url, { width: 180, margin: 2, color: { dark: '#d4a017', light: '#1a1508' } }, () => {});
+    }
+  });
+}
+
+function remoteBuzz() {
+  TB.turn.buzzed++;
+  haptic('heavy');
+  // Show buzz overlay briefly
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(248,113,113,0.25);display:flex;align-items:center;justify-content:center;pointer-events:none;animation:fadeOut 0.8s forwards;';
+  overlay.innerHTML = '<span style="font-size:5rem;animation:bounce 0.5s infinite;">🚫</span>';
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 800);
+  // Mark as buzz and advance
+  const card = TB.deck[TB.deckIdx - 1];
+  if (card) TB.turn.log.push({ word: card.word, result: 'buzz' });
+  stopTimer();
+  setTimeout(() => { nextCard(true); startTimer(); }, 600);
 }
 
 // ── Setup names ────────────────────────────────────────────
@@ -43,6 +140,8 @@ function renderSetup() {
         <h2 class="font-serif text-gold2">Biblical Taboo</h2>
         <p class="text-muted text-sm mt-1">Describe the word — without saying what's forbidden</p>
       </div>
+
+      <button class="btn btn-ghost btn-sm btn-full mb-3" onclick="showTBDirections()">📖 How to Play</button>
 
       <!-- Teams -->
       <div class="card mb-3">
@@ -85,6 +184,20 @@ function renderSetup() {
         </div>
       </div>
 
+      <!-- Multi-device buzzer -->
+      <div class="card mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <p class="text-sm font-bold">📡 Multi-Device Buzzer</p>
+            <p class="text-muted" style="font-size:0.75rem;">Opposing team buzzes from their own phone</p>
+          </div>
+          <button onclick="toggleMultiDevice()" style="width:48px;height:26px;border-radius:999px;border:none;cursor:pointer;transition:background 0.2s;background:${_tbMultiDevice ? 'var(--green)' : 'var(--bg3)'};position:relative;">
+            <span style="position:absolute;top:3px;left:${_tbMultiDevice ? '25px' : '3px'};width:20px;height:20px;background:white;border-radius:50%;transition:left 0.2s;"></span>
+          </button>
+        </div>
+        ${_tbMultiDevice ? `<div id="buzzerStatus" class="mt-2"><p class="text-sm text-center text-muted">⏳ Connecting to buzzer server…</p></div>` : ''}
+      </div>
+
       <button class="btn btn-primary btn-lg btn-full" onclick="startTaboo()">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
         Start Game
@@ -105,6 +218,36 @@ function teamRow(val, i) {
     </div>`;
 }
 
+function showTBDirections() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="overlay" id="tbDirOverlay" onclick="if(event.target.id==='tbDirOverlay')this.remove()">
+      <div class="modal" style="max-height:80vh;overflow-y:auto;">
+        <div class="modal-handle"></div>
+        <h3 class="font-serif text-gold2 mb-3">📖 How to Play — Biblical Taboo</h3>
+        <div class="flex flex-col gap-3 text-sm" style="color:var(--text2);line-height:1.7;">
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🎯 Goal</p>
+            <p>Get your team to say the target biblical word using only descriptions — without saying the word itself or any of the forbidden words listed on the card.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">⏱️ Your Turn</p>
+            <p>The describer holds the phone and sees the card. Their team guesses out loud. Race through as many cards as possible before the timer runs out!</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🚫 Buzzing</p>
+            <p>The opposing team listens carefully. If the describer says the target word or any forbidden word, tap <strong>Buzzed</strong> (or use the multi-device buzzer). That card scores no point and is discarded.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🏆 Scoring</p>
+            <p>✓ Correct = +1 point &nbsp;·&nbsp; ✗ Skip = 0 &nbsp;·&nbsp; 🚫 Buzzed = −1 point<br/>Play through all rounds — highest score wins!</p>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-4" onclick="document.getElementById('tbDirOverlay').remove()">Got it!</button>
+      </div>
+    </div>
+  `);
+}
+
 function onTBNameInput(input, i) {
   _tbNames[i] = input.value;
   const av = input.parentElement.querySelector('.avatar');
@@ -115,7 +258,7 @@ function addTBTeam() {
   syncTBNames();
   if (_tbNames.length >= 6) { showToast('Max 6 teams', 'error'); return; }
   _tbNames.push('');
-  renderSetup();
+  renderTBTeamList();
   setTimeout(() => {
     const inputs = document.querySelectorAll('#teamList input');
     inputs[inputs.length - 1]?.focus();
@@ -125,11 +268,17 @@ function addTBTeam() {
 function removeTBTeam(i) {
   syncTBNames();
   _tbNames.splice(i, 1);
-  renderSetup();
+  renderTBTeamList();
 }
 
 function syncTBNames() {
   document.querySelectorAll('#teamList input').forEach((inp, i) => { _tbNames[i] = inp.value; });
+}
+
+function renderTBTeamList() {
+  const list = document.getElementById('teamList');
+  if (!list) { renderSetup(); return; }
+  list.innerHTML = _tbNames.map((v, i) => teamRow(v, i)).join('');
 }
 
 function adjustRounds(delta) {
@@ -281,9 +430,15 @@ function renderPlayScreen(card, animate) {
         <button class="btn btn-ghost" style="font-size:1rem;min-height:56px;" onclick="recordResult('skip')">
           ✗ Skip
         </button>
-        <button class="btn btn-danger btn-buzz" style="min-height:48px;font-size:0.95rem;" onclick="recordResult('buzz')">
-          🚫 Buzzed (Said Forbidden Word)
-        </button>
+        ${_tbMultiDevice && _tbBuzzerConn ? `
+          <div class="btn-buzz" style="grid-column:1/-1;padding:0.6rem;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:var(--r-sm);text-align:center;">
+            <span style="font-size:0.8rem;color:var(--green);">📡 Buzzer connected — opposing team buzzes from their phone</span>
+          </div>
+        ` : `
+          <button class="btn btn-danger btn-buzz" style="min-height:48px;font-size:0.95rem;" onclick="recordResult('buzz')">
+            🚫 Buzzed (Said Forbidden Word)
+          </button>
+        `}
       </div>
     </div>
   `;

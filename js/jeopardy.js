@@ -7,14 +7,17 @@ const JP = {
   finalJeopardy: false,
   finalBets: {},
   finalAnswered: false,
-  phase: 'setup', // setup | board | question | final-bet | final-q | final-reveal | gameover
-  timerDuration: 30, // 15, 30, 45, 60, false
+  phase: 'setup', // setup | board | question | daily-double | final-bet | final-q | final-reveal | gameover
+  timerDuration: 30,
+  dailyDouble: null, // {ci, qi} — randomly chosen tile
+  ddWager: 0,
+  ddTeamIdx: -1,
 };
 
 const root = document.getElementById('appRoot');
 
 function render(html) {
-  root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.25rem;padding-bottom:2rem;">${html}</div>`;
+  window.scrollTo(0,0); root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.25rem;padding-bottom:2rem;">${html}</div>`;
 }
 
 // ── SCREEN: Setup ─────────────────────────────────────────
@@ -33,6 +36,8 @@ function showSetup() {
         <h2 class="font-serif text-gold2">Biblical Jeopardy</h2>
         <p class="text-muted text-sm mt-1">Test your Scripture knowledge</p>
       </div>
+
+      <button class="btn btn-ghost btn-sm btn-full mb-3" onclick="showJPDirections()">📖 How to Play</button>
 
       <div class="card mb-3">
         <p class="input-label mb-2">Teams / Players <span class="text-muted">(2–6)</span></p>
@@ -65,7 +70,11 @@ function showSetup() {
   window.setJPTimer = function(val) {
     if (JP.timerDuration === val) JP.timerDuration = false;
     else JP.timerDuration = val;
-    showSetup();
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+      const v = btn.textContent.trim();
+      const match = v === 'Off' ? false : parseInt(v);
+      btn.classList.toggle('active', match === JP.timerDuration);
+    });
   };
 
   // Default teams
@@ -94,6 +103,36 @@ function renderTeamList() {
   `).join('');
 }
 
+function showJPDirections() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="overlay" id="jpDirOverlay" onclick="if(event.target.id==='jpDirOverlay')this.remove()">
+      <div class="modal" style="max-height:80vh;overflow-y:auto;">
+        <div class="modal-handle"></div>
+        <h3 class="font-serif text-gold2 mb-3">⭐ How to Play — Biblical Jeopardy</h3>
+        <div class="flex flex-col gap-3 text-sm" style="color:var(--text2);line-height:1.7;">
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🎯 Goal</p>
+            <p>Teams take turns selecting questions from the board. Answer correctly to earn points. Most points at the end wins!</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🗣️ Answering</p>
+            <p>All answers must be phrased as a question — "What is…?" or "Who is…?". The host reveals the answer and awards points to the correct team.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">⭐ Daily Double</p>
+            <p>One hidden tile on the board is the Daily Double! The team that finds it wagers some or all of their points before hearing the question.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🏆 Final Jeopardy</p>
+            <p>After the board is cleared, all teams secretly wager any amount of their score. Everyone hears the final question, writes their answer, then reveals simultaneously. Correct answers add the wager; wrong answers lose it.</p>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-4" onclick="document.getElementById('jpDirOverlay').remove()">Got it!</button>
+      </div>
+    </div>
+  `);
+}
+
 function addTeam() {
   if (JP.teams.length >= 6) { showToast('Max 6 teams', 'error'); return; }
   JP.teams.push({ name: `Team ${JP.teams.length + 1}`, score: 0 });
@@ -107,6 +146,13 @@ function startJeopardy() {
     if (input) t.name = input.value || t.name;
     t.score = 0;
   });
+
+  // Pick 1 random Daily Double tile
+  const cats = getGameData().jeopardy.categories;
+  const allTiles = [];
+  cats.forEach((cat, ci) => cat.questions.forEach((q, qi) => allTiles.push({ci, qi})));
+  JP.dailyDouble = shuffle([...allTiles])[0] || null;
+
   showBoard();
 }
 
@@ -164,6 +210,13 @@ function showBoard() {
           `).join('')}
         </div>
 
+        <!-- Daily Double tracker -->
+        ${JP.dailyDouble && !JP.answered[`${JP.dailyDouble.ci}-${JP.dailyDouble.qi}`] ? `
+          <div class="text-center mt-3 text-sm text-muted">⭐ 1 Daily Double hidden on the board</div>
+        ` : JP.dailyDouble ? `
+          <div class="text-center mt-3 text-sm" style="color:var(--gold2);">⭐ Daily Double found!</div>
+        ` : ''}
+
         <!-- Final Jeopardy -->
         <div class="mt-4">
           ${allDone ? `
@@ -186,6 +239,12 @@ function showBoard() {
 
 // ── SCREEN: Question ───────────────────────────────────────
 function openQuestion(ci, qi) {
+  // Check for Daily Double
+  if (JP.dailyDouble && JP.dailyDouble.ci === ci && JP.dailyDouble.qi === qi && !JP.answered[`${ci}-${qi}`]) {
+    showDailyDouble(ci, qi);
+    return;
+  }
+
   const data = getGameData();
   const cat = data.jeopardy.categories[ci];
   const q = cat.questions[qi];
@@ -258,6 +317,142 @@ function openQuestion(ci, qi) {
   if (JP.timerDuration) {
     startQuestionTimer(JP.timerDuration);
   }
+}
+
+// ── SCREEN: Daily Double ───────────────────────────────────
+function showDailyDouble(ci, qi) {
+  JP.phase = 'daily-double';
+  JP.ddWager = 0;
+  JP.ddTeamIdx = -1;
+  const data = getGameData();
+  const cat = data.jeopardy.categories[ci];
+  const q = cat.questions[qi];
+
+  render(`
+    <div class="stagger text-center">
+      <div class="card card-glow p-3 mb-4" style="background:linear-gradient(135deg,rgba(212,160,23,0.2),rgba(212,160,23,0.05));border-color:var(--gold2);">
+        <span style="font-size:3rem;display:block;margin-bottom:0.5rem;animation:bounce 1s infinite">⭐</span>
+        <p class="text-muted text-sm mb-1" style="letter-spacing:0.15em;text-transform:uppercase;">Daily Double!</p>
+        <h2 class="font-serif text-gold2" style="font-size:2rem;">Daily Double</h2>
+        <p class="text-muted text-sm mt-1">${cat.name}</p>
+      </div>
+
+      <div class="card mb-3">
+        <p class="input-label mb-2">Which team found it?</p>
+        <div class="flex flex-col gap-2" id="ddTeamList">
+          ${JP.teams.map((t, i) => `
+            <button id="dd-team-${i}" class="vote-btn ${JP.ddTeamIdx === i ? 'selected' : ''}" onclick="selectDDTeam(${i})">
+              <div class="avatar">${getInitials(t.name)}</div>
+              <span>${t.name}</span>
+              <span class="score-value" style="margin-left:auto;font-size:1rem;">$${t.score}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="card mb-4 hidden" id="ddWagerCard">
+        <p class="input-label mb-1">Place Your Wager</p>
+        <p class="text-muted text-sm mb-3">Up to <strong id="ddMaxLabel">$0</strong> (or minimum $100)</p>
+        <div class="flex items-center gap-3 justify-center mb-2">
+          <button onclick="adjustDDWager(-100)" class="btn btn-ghost btn-sm btn-icon" style="width:40px;height:40px;font-size:1.1rem;">−</button>
+          <span style="font-family:var(--font-h);font-size:2rem;font-weight:700;color:var(--gold2);min-width:90px;text-align:center;" id="ddWagerDisplay">$100</span>
+          <button onclick="adjustDDWager(100)" class="btn btn-ghost btn-sm btn-icon" style="width:40px;height:40px;font-size:1.1rem;">+</button>
+        </div>
+        <button class="btn btn-primary btn-lg btn-full" onclick="showDailyDoubleQuestion(${ci}, ${qi})">
+          Reveal Question →
+        </button>
+      </div>
+    </div>
+  `);
+}
+
+function selectDDTeam(teamIdx) {
+  JP.ddTeamIdx = teamIdx;
+  document.querySelectorAll('#ddTeamList .vote-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`dd-team-${teamIdx}`)?.classList.add('selected');
+  const maxWager = Math.max(JP.teams[teamIdx].score, 100);
+  JP.ddWager = Math.max(100, Math.min(maxWager, 100));
+  const card = document.getElementById('ddWagerCard');
+  if (card) card.classList.remove('hidden');
+  const maxLbl = document.getElementById('ddMaxLabel');
+  if (maxLbl) maxLbl.textContent = `$${maxWager}`;
+  const disp = document.getElementById('ddWagerDisplay');
+  if (disp) disp.textContent = `$${JP.ddWager}`;
+  haptic('light');
+}
+
+function adjustDDWager(delta) {
+  if (JP.ddTeamIdx === -1) return;
+  const maxWager = Math.max(JP.teams[JP.ddTeamIdx].score, 100);
+  JP.ddWager = Math.max(100, Math.min(maxWager, JP.ddWager + delta));
+  const disp = document.getElementById('ddWagerDisplay');
+  if (disp) disp.textContent = `$${JP.ddWager}`;
+}
+
+function showDailyDoubleQuestion(ci, qi) {
+  if (JP.ddTeamIdx === -1) { showToast('Select a team first', 'error'); return; }
+  const data = getGameData();
+  const cat = data.jeopardy.categories[ci];
+  const q = cat.questions[qi];
+  JP.currentQ = { ci, qi, q, cat, isDailyDouble: true, ddWager: JP.ddWager, ddTeamIdx: JP.ddTeamIdx };
+  JP.phase = 'question';
+  const wager = JP.ddWager;
+  const teamName = JP.teams[JP.ddTeamIdx].name;
+
+  render(`
+    <div class="stagger">
+      <div class="text-center mb-3">
+        <span class="badge badge-gold" style="margin-right:0.4rem;">⭐ Daily Double</span>
+        <span class="badge badge-gold">${cat.name}</span>
+        <span class="badge" style="background:rgba(212,160,23,0.2);color:var(--gold2);border:1px solid var(--gold2);margin-left:0.4rem;">$${wager} wagered by ${teamName}</span>
+      </div>
+
+      <div class="card card-glow p-3 mb-4 text-center" style="padding:2rem;">
+        <p class="font-serif" style="font-size:clamp(1rem,4vw,1.3rem);color:var(--text);line-height:1.6;">${q.question}</p>
+      </div>
+
+      <div class="flip-card w-full mb-4" id="ansCard" onclick="revealAnswer()">
+        <div class="flip-inner" style="min-height:0;">
+          <div class="flip-front">
+            <div class="role-card-front" style="min-height:90px;padding:1.25rem;">
+              <span style="font-size:1.5rem;">🤔</span>
+              <p class="text-muted text-sm">Tap to reveal answer</p>
+            </div>
+          </div>
+          <div class="flip-back">
+            <div class="role-card-back" style="min-height:90px;height:100%;padding:1.25rem;background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.3);">
+              <p class="font-serif" style="color:var(--green);font-size:1.1rem;font-weight:700;">${q.answer}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="awardSection" class="card mb-3 hidden">
+        <p class="input-label mb-2">Did <strong>${teamName}</strong> answer correctly?</p>
+        <div class="flex gap-2">
+          <button class="btn btn-success btn-full" onclick="awardDDPoints(true)">✓ Correct (+$${wager})</button>
+          <button class="btn btn-danger btn-full" onclick="awardDDPoints(false)">✗ Wrong (−$${wager})</button>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost btn-full" onclick="stopQuestionTimer(); showBoard()">← Back to Board</button>
+    </div>
+  `);
+}
+
+function awardDDPoints(correct) {
+  const { ddWager, ddTeamIdx, ci, qi } = JP.currentQ;
+  if (correct) {
+    JP.teams[ddTeamIdx].score += ddWager;
+    haptic('heavy');
+    showToast(`+$${ddWager} for ${JP.teams[ddTeamIdx].name}!`, 'success');
+  } else {
+    JP.teams[ddTeamIdx].score = Math.max(0, JP.teams[ddTeamIdx].score - ddWager);
+    haptic('medium');
+    showToast(`−$${ddWager} for ${JP.teams[ddTeamIdx].name}`, 'error');
+  }
+  JP.answered[`${ci}-${qi}`] = true;
+  showBoard();
 }
 
 let _jpTimerInterval = null;
@@ -405,11 +600,8 @@ function showFinalQuestion() {
   });
 
   const data = getGameData();
-  // Use last category's hardest question as Final Jeopardy
-  const cats = data.jeopardy.categories;
-  const finalCat = cats[cats.length - 1];
-  const finalQ = finalCat.questions[finalCat.questions.length - 1];
-  JP.currentQ = { q: finalQ, cat: finalCat };
+  const fj = data.jeopardy.finalJeopardy;
+  JP.currentQ = { q: { question: fj.question, answer: fj.answer }, cat: { name: fj.category } };
 
   JP.phase = 'final-q';
 

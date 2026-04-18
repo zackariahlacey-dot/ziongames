@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+  <meta name="theme-color" content="#c0392b"/>
+  <title>Buzzer — True Bible Games</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red: #f87171;
+      --red-dark: #c0392b;
+      --bg: #0f0a04;
+      --text: #f5e6c8;
+      --text2: #c4a96a;
+    }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    #statusText {
+      font-size: 1rem;
+      color: var(--text2);
+      min-height: 1.5rem;
+      transition: color 0.3s;
+    }
+    #statusText.connected { color: #4ade80; }
+    #statusText.error { color: var(--red); }
+    #buzzBtn {
+      width: min(280px, 80vw);
+      height: min(280px, 80vw);
+      border-radius: 50%;
+      border: none;
+      background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b 60%, #7b1010);
+      box-shadow: 0 0 0 8px rgba(192,57,43,0.3), 0 8px 40px rgba(192,57,43,0.5), inset 0 -6px 0 rgba(0,0,0,0.3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: transform 0.1s, box-shadow 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    #buzzBtn:disabled {
+      background: radial-gradient(circle at 35% 35%, #555, #333 60%, #222);
+      box-shadow: 0 0 0 8px rgba(100,100,100,0.2), 0 4px 20px rgba(0,0,0,0.3);
+      cursor: not-allowed;
+    }
+    #buzzBtn:not(:disabled):active {
+      transform: scale(0.93);
+      box-shadow: 0 0 0 4px rgba(192,57,43,0.3), 0 4px 20px rgba(192,57,43,0.4), inset 0 -2px 0 rgba(0,0,0,0.3);
+    }
+    .buzz-icon { font-size: clamp(3rem, 14vw, 5rem); }
+    .buzz-label { font-size: clamp(1.2rem, 5vw, 1.8rem); font-weight: 800; color: white; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+    #feedback {
+      font-size: 1.1rem;
+      font-weight: 700;
+      min-height: 1.75rem;
+      color: var(--red);
+      transition: opacity 0.3s;
+    }
+    .title { font-size: 1.2rem; font-weight: 700; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 8px rgba(192,57,43,0.3),0 8px 40px rgba(192,57,43,0.5),inset 0 -6px 0 rgba(0,0,0,0.3);}50%{box-shadow:0 0 0 16px rgba(192,57,43,0.15),0 8px 60px rgba(192,57,43,0.7),inset 0 -6px 0 rgba(0,0,0,0.3);}}
+    #buzzBtn.fired { animation: pulse 0.4s ease-out; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <p class="title">📖 True Bible Games</p>
+    <p id="statusText">Connecting…</p>
+
+    <button id="buzzBtn" disabled>
+      <span class="buzz-icon">🚫</span>
+      <span class="buzz-label">BUZZ!</span>
+    </button>
+
+    <p id="feedback">&nbsp;</p>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const hostId = params.get('host');
+    const statusEl = document.getElementById('statusText');
+    const feedbackEl = document.getElementById('feedback');
+    const btn = document.getElementById('buzzBtn');
+    let conn = null;
+    let buzzCount = 0;
+
+    if (!hostId) {
+      statusEl.textContent = '⚠️ No host ID in URL';
+      statusEl.className = 'error';
+    } else {
+      const peer = new Peer();
+
+      peer.on('open', () => {
+        statusEl.textContent = 'Connecting to game…';
+        conn = peer.connect(hostId, { reliable: true });
+
+        conn.on('open', () => {
+          statusEl.textContent = '✅ Connected to game!';
+          statusEl.className = 'connected';
+          btn.disabled = false;
+        });
+
+        conn.on('error', () => {
+          statusEl.textContent = '❌ Lost connection';
+          statusEl.className = 'error';
+          btn.disabled = true;
+        });
+
+        conn.on('close', () => {
+          statusEl.textContent = '⚠️ Disconnected';
+          statusEl.className = 'error';
+          btn.disabled = true;
+        });
+      });
+
+      peer.on('error', err => {
+        statusEl.textContent = '❌ Could not connect — check internet';
+        statusEl.className = 'error';
+      });
+    }
+
+    function sendBuzz() {
+      if (!conn || btn.disabled) return;
+      conn.send('buzz');
+      buzzCount++;
+      navigator.vibrate?.(300);
+      feedbackEl.textContent = `🚫 Buzzed! (×${buzzCount})`;
+      btn.classList.remove('fired');
+      void btn.offsetWidth; // force reflow for animation restart
+      btn.classList.add('fired');
+    }
+
+    btn.addEventListener('click', sendBuzz);
+    btn.addEventListener('touchstart', e => { e.preventDefault(); sendBuzz(); }, { passive: false });
+  </script>
+</body>
+</html>

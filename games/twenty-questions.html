@@ -6,28 +6,38 @@
   <meta name="theme-color" content="#d4a017"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <title>Biblical Mr. White — True Bible Games</title>
+  <title>Bible 20 Questions — True Bible Games</title>
   <link rel="stylesheet" href="/css/styles.css"/>
+  <style>
+    .q-counter {
+      font-family: var(--font-h);
+      font-size: clamp(5rem, 22vw, 8rem);
+      font-weight: 700;
+      line-height: 1;
+      color: var(--gold2);
+      text-shadow: 0 0 40px rgba(212,160,23,0.3);
+    }
+    .q-counter.danger { color: var(--red); text-shadow: 0 0 40px rgba(248,113,113,0.3); }
+    .q-counter.warning { color: #f59e0b; }
+  </style>
 </head>
 <body>
-  <!-- Header -->
   <header class="app-header">
     <div class="app-header-inner">
       <button class="back-btn" onclick="navigateTo('/')" aria-label="Back">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
       </button>
-      <span class="header-title">📜 Mr. White</span>
+      <span class="header-title">❓ 20 Questions</span>
       <div style="width:40px"></div>
     </div>
   </header>
 
-  <main class="page safe-bottom" id="appRoot">
-    <!-- screens injected by JS -->
+  <main class="page safe-bottom">
+    <div id="appRoot"></div>
   </main>
 
   <script src="/js/app.js"></script>
   <script src="/js/game-data.js"></script>
-  <script src="/js/scoreboard.js"></script>
-  <script src="/js/mr-white.js"></script>
+  <script src="/js/twenty-questions.js"></script>
 </body>
 </html>

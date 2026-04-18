@@ -16,7 +16,7 @@ const MF = {
 const root = document.getElementById('appRoot');
 
 function render(html) {
-  root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.5rem;padding-bottom:2rem;">${html}</div>`;
+  window.scrollTo(0,0); root.innerHTML = `<div class="container animate-fade-in" style="padding-top:1.5rem;padding-bottom:2rem;">${html}</div>`;
 }
 
 // ── Role definitions ────────────────────────────────────────
@@ -33,28 +33,82 @@ const ROLES = {
 
 // ── Role distribution ───────────────────────────────────────
 function assignRoles(playerCount) {
-  const data = getGameData();
-  const dist = data.mafia.roleDistribution;
-  const template = dist[Math.min(playerCount, 12)] || dist[12];
+  const template = getEffectiveDist(playerCount);
   const roleList = [];
 
   Object.entries(template).forEach(([roleId, count]) => {
     for (let i = 0; i < count; i++) roleList.push(roleId);
   });
 
-  // Fill remaining with disciples
   while (roleList.length < playerCount) roleList.push('disciple');
 
   return shuffle(roleList);
 }
 
 // ── Setup state ───────────────────────────────────────────
-let _mfNames = ['', '', '', '', ''];
+let _mfPlayerCount = 5;
+let _mfCustomDist = null;
+
+function getEffectiveDist(count) {
+  if (_mfCustomDist) return { ..._mfCustomDist };
+  const data = getGameData();
+  return { ...(data.mafia.roleDistribution[Math.min(count, 12)] || data.mafia.roleDistribution[12]) };
+}
+
+function adjustCustomRole(role, delta) {
+  if (!_mfCustomDist) _mfCustomDist = getEffectiveDist(_mfPlayerCount);
+  _mfCustomDist[role] = Math.max(0, (_mfCustomDist[role] || 0) + delta);
+  if (_mfCustomDist[role] === 0) delete _mfCustomDist[role];
+  const total = Object.values(_mfCustomDist).reduce((a, b) => a + b, 0);
+  Object.keys(ROLES).forEach(r => {
+    const el = document.getElementById(`cr-${r}`);
+    if (el) el.textContent = _mfCustomDist[r] || 0;
+  });
+  const tw = document.getElementById('crTotal');
+  if (tw) { tw.textContent = `${total}/${_mfPlayerCount} roles assigned`; tw.style.color = total !== _mfPlayerCount ? 'var(--red)' : 'var(--green)'; }
+  const rb = document.getElementById('crResetBtn');
+  if (rb) rb.style.display = '';
+}
+
+function resetCustomRoles() {
+  _mfCustomDist = null;
+  const rolesEl = document.getElementById('rolesContent');
+  if (rolesEl) rolesEl.innerHTML = buildRoleCustomizer(_mfPlayerCount);
+  else renderMFSetup();
+}
+
+function buildRoleCustomizer(count) {
+  const dist = getEffectiveDist(count);
+  const total = Object.values(dist).reduce((a, b) => a + b, 0);
+  return `
+    <div class="flex flex-col gap-1">
+      ${Object.keys(ROLES).map(role => {
+        const r = ROLES[role];
+        const val = dist[role] || 0;
+        return `<div class="flex items-center gap-2" style="padding:0.4rem 0.25rem;">
+          <span style="font-size:1.15rem;width:28px;text-align:center;">${r.icon}</span>
+          <div style="flex:1;min-width:0;">
+            <span style="font-size:0.85rem;font-weight:600;color:${r.color};">${r.name}</span>
+            <span class="badge ${r.team==='good'?'badge-green':r.team==='evil'?'badge-red':'badge-blue'}" style="font-size:0.62rem;margin-left:0.3rem;">${r.team}</span>
+          </div>
+          <div class="flex items-center gap-1" style="flex-shrink:0;">
+            <button onclick="adjustCustomRole('${role}',-1)" class="btn btn-ghost btn-sm btn-icon" style="width:30px;height:30px;font-size:1.1rem;">−</button>
+            <span style="width:24px;text-align:center;font-weight:700;font-size:0.95rem;" id="cr-${role}">${val}</span>
+            <button onclick="adjustCustomRole('${role}',1)" class="btn btn-ghost btn-sm btn-icon" style="width:30px;height:30px;font-size:1.1rem;">+</button>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="flex justify-between items-center mt-2 pt-2" style="border-top:1px solid var(--border);">
+        <span class="text-sm font-bold" id="crTotal" style="color:${total !== count ? 'var(--red)' : 'var(--green)'};">${total}/${count} roles assigned</span>
+        <button class="btn btn-ghost btn-sm" id="crResetBtn" onclick="resetCustomRoles()" style="margin-top:0.4rem;${_mfCustomDist ? '' : 'display:none;'}">Reset to Default</button>
+      </div>
+    </div>
+  `;
+}
 
 // ── SCREEN: Setup ─────────────────────────────────────────
 function showSetup() {
   MF.phase = 'setup';
-  if (_mfNames.length < 5) _mfNames = ['', '', '', '', ''];
   renderMFSetup();
 }
 
@@ -67,89 +121,90 @@ function renderMFSetup() {
         <p class="text-muted text-sm mt-1">Seek out the False Prophets before night falls</p>
       </div>
 
-      <button class="btn btn-ghost btn-sm btn-full mb-3" onclick="showRolesGuide()">
-        📖 View All Roles
-      </button>
-
-      <div class="card mb-3">
-        <p class="input-label mb-2">Players <span class="text-muted">(5–12)</span></p>
-        <div id="playerList" class="flex flex-col gap-2 mb-2">
-          ${_mfNames.map((v, i) => `
-            <div class="flex gap-1 items-center">
-              <div class="avatar avatar-sm">${v ? getInitials(v) : (i+1)}</div>
-              <input class="input" placeholder="Player ${i+1}" value="${v}"
-                oninput="onMFNameInput(this,${i})"
-                style="flex:1;"/>
-              ${i > 0 ? `<button onclick="removeMFPlayer(${i})" class="btn btn-ghost btn-icon" style="width:36px;height:36px;color:var(--text3);">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
-              </button>` : '<div style="width:36px"></div>'}
-            </div>
-          `).join('')}
-        </div>
-        <button class="btn btn-ghost btn-sm btn-full" onclick="addMFPlayer()">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          Add Player
-        </button>
+      <div class="flex gap-2 mb-3">
+        <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="showMFDirections()">📖 How to Play</button>
+        <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="showRolesGuide()">🎭 All Roles</button>
       </div>
 
-      <div class="card mb-4" id="rolePreview">
-        <p class="input-label mb-2">Role Distribution Preview</p>
-        <div class="flex flex-wrap gap-1">${buildRolePreview(_mfNames.filter(n=>n.trim()).length)}</div>
+      <div class="card mb-3" style="padding:1.5rem;">
+        <p class="input-label mb-3 text-center">Number of Players</p>
+        <div class="flex items-center justify-center gap-4">
+          <button class="btn btn-secondary btn-icon" onclick="adjustMFCount(-1)" style="font-size:1.5rem;">−</button>
+          <span id="mfCountDisplay" style="font-size:2rem;font-weight:700;font-family:var(--font-h);color:var(--text);min-width:3rem;text-align:center;">${_mfPlayerCount}</span>
+          <button class="btn btn-secondary btn-icon" onclick="adjustMFCount(1)" style="font-size:1.5rem;">+</button>
+        </div>
+        <p class="text-muted text-center text-sm mt-3">5 to 12 players</p>
+      </div>
+
+      <div class="card mb-4">
+        <button onclick="toggleMFRoles()" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0;text-align:left;">
+          <p class="input-label" style="margin:0;">Role Distribution</p>
+          <span id="rolesArrow" style="font-size:0.85rem;color:var(--text3);">▸ Customize</span>
+        </button>
+        <div id="rolesContent" style="display:none;margin-top:0.75rem;">
+          ${buildRoleCustomizer(_mfPlayerCount)}
+        </div>
       </div>
 
       <button class="btn btn-primary btn-lg btn-full" onclick="startGame()">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-        Assign Roles & Begin
+        Start Game
       </button>
     </div>
   `);
 }
 
-function onMFNameInput(input, idx) {
-  _mfNames[idx] = input.value;
-  const av = input.parentElement.querySelector('.avatar');
-  if (av) av.textContent = input.value ? getInitials(input.value) : (idx + 1);
+function adjustMFCount(delta) {
+  _mfPlayerCount = Math.max(5, Math.min(12, _mfPlayerCount + delta));
+  _mfCustomDist = null;
+  const countEl = document.getElementById('mfCountDisplay');
+  const rolesEl = document.getElementById('rolesContent');
+  if (countEl) {
+    countEl.textContent = _mfPlayerCount;
+    if (rolesEl && rolesEl.style.display !== 'none') rolesEl.innerHTML = buildRoleCustomizer(_mfPlayerCount);
+  } else {
+    renderMFSetup();
+  }
 }
 
-function addMFPlayer() {
-  syncMFNames();
-  if (_mfNames.length >= 12) { showToast('Maximum 12 players', 'error'); return; }
-  _mfNames.push('');
-  renderMFSetup();
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('#playerList input');
-    inputs[inputs.length - 1]?.focus();
-  }, 50);
+function toggleMFRoles() {
+  const content = document.getElementById('rolesContent');
+  const arrow = document.getElementById('rolesArrow');
+  if (!content) return;
+  const open = content.style.display !== 'none';
+  content.style.display = open ? 'none' : '';
+  if (arrow) arrow.textContent = open ? '▸ Customize' : '▾ Customize';
 }
 
-function removeMFPlayer(idx) {
-  syncMFNames();
-  _mfNames.splice(idx, 1);
-  renderMFSetup();
-}
-
-function syncMFNames() {
-  const inputs = document.querySelectorAll('#playerList input');
-  inputs.forEach((inp, i) => { _mfNames[i] = inp.value; });
-}
-
-function buildRolePreview(count) {
-  if (count < 5) return '<span class="text-muted text-sm">Need at least 5 players</span>';
-  const data = getGameData();
-  const dist = data.mafia.roleDistribution;
-  const template = dist[Math.min(count, 12)] || dist[12];
-  return Object.entries(template).map(([id, n]) => {
-    const r = ROLES[id] || {};
-    return Array(n).fill(0).map(() =>
-      `<span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;background:${r.bg};border:1px solid ${r.border};border-radius:999px;font-size:0.75rem;color:${r.color};">
-        ${r.icon} ${r.name}
-      </span>`
-    ).join('');
-  }).join('');
-}
-
-function getPlayerNames() {
-  return _mfNames.filter(n => n.trim());
+function showMFDirections() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="overlay" id="mfDirOverlay" onclick="if(event.target.id==='mfDirOverlay')this.remove()">
+      <div class="modal" style="max-height:80vh;overflow-y:auto;">
+        <div class="modal-handle"></div>
+        <h3 class="font-serif text-gold2 mb-3">🦅 How to Play — Biblical Mafia</h3>
+        <div class="flex flex-col gap-3 text-sm" style="color:var(--text2);line-height:1.7;">
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🎯 Goal</p>
+            <p><strong style="color:var(--green);">Good team:</strong> find and eliminate all False Prophets before being outnumbered.<br/>
+            <strong style="color:var(--red);">Evil team:</strong> eliminate enough faithful players to take the majority.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🌙 Night Phase</p>
+            <p>Everyone closes their eyes. The narrator wakes each special role one at a time. Evil players secretly choose someone to eliminate. The Prophet inspects a player, the Healer protects one.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">☀️ Day Phase</p>
+            <p>Dawn reveals who was eliminated overnight. Everyone discusses and debates. Then all living players vote — the person with the most votes is eliminated and their role is revealed.</p>
+          </div>
+          <div>
+            <p class="font-bold mb-1" style="color:var(--text);">🏆 Winning</p>
+            <p>Good wins when all evil is gone. Evil wins when evil players equal or outnumber good. The Wanderer wins by surviving to the final 3.</p>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-4" onclick="document.getElementById('mfDirOverlay').remove()">Got it!</button>
+      </div>
+    </div>
+  `);
 }
 
 
@@ -194,35 +249,50 @@ function getRoleDesc(id) {
 
 // ── Start game & assign roles ──────────────────────────────
 function startGame() {
-  syncMFNames();
-  const names = getPlayerNames();
-  if (names.length < 5) { showToast('Need at least 5 players', 'error'); return; }
-  if (names.length > 12) { showToast('Maximum 12 players', 'error'); return; }
+  if (_mfCustomDist) {
+    const total = Object.values(_mfCustomDist).reduce((a, b) => a + b, 0);
+    if (total !== _mfPlayerCount) { showToast(`Role total (${total}) must equal player count (${_mfPlayerCount})`, 'error'); return; }
+  }
 
-  const roles = assignRoles(names.length);
-  MF.players = names.map((name, i) => ({
-    name, role: roles[i], alive: true, protected: false
-  }));
+  const roles = assignRoles(_mfPlayerCount);
+  MF.players = roles.map((role, i) => ({ name: `Player ${i + 1}`, role, alive: true, protected: false }));
   MF.night = 1;
   MF.nightActions = {};
   MF.nightResults = [];
   MF.lastHealerTarget = -1;
   MF.dayVotes = {};
 
-  showRoleReveal(0);
+  showMFPassScreen(0);
+}
+
+// ── SCREEN: Pass Phone ─────────────────────────────────────
+function showMFPassScreen(idx) {
+  MF.revealIdx = idx;
+
+  render(`
+    <div class="stagger text-center" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;">
+      <span style="font-size:4rem;display:block;margin-bottom:1rem;animation:bounce 2s infinite">🙈</span>
+      <h2 class="font-serif text-gold2 mb-2">Pass the Phone</h2>
+      <p class="text-muted mb-4">Hand the device to <strong style="color:var(--text);">Player ${idx + 1}</strong>.<br/><span class="text-sm">Everyone else look away!</span></p>
+      <button class="btn btn-primary btn-lg" style="width:100%;max-width:300px;" onclick="showRoleReveal(${idx})">
+        I'm Ready →
+      </button>
+      <div class="progress-bar mt-4" style="max-width:300px;width:100%;">
+        <div class="progress-fill" style="width:${(idx / MF.players.length) * 100}%"></div>
+      </div>
+    </div>
+  `);
 }
 
 // ── SCREEN: Role Reveal ────────────────────────────────────
 function showRoleReveal(idx) {
-  MF.revealIdx = idx;
   const p = MF.players[idx];
   const r = ROLES[p.role];
 
   render(`
     <div class="stagger text-center">
-      <p class="text-muted text-sm mb-1">Role Assignment — Player ${idx+1} of ${MF.players.length}</p>
-      <h2 class="font-serif text-gold2 mb-1">${p.name}'s Turn</h2>
-      <p class="text-muted text-sm mb-4">Hand phone to <strong style="color:var(--text)">${p.name}</strong>. Others look away!</p>
+      <p class="text-muted text-sm mb-1">Player ${idx + 1} of ${MF.players.length}</p>
+      <h2 class="font-serif text-gold2 mb-4">${p.name}</h2>
 
       <div class="flip-card w-full mb-4" id="roleCard" onclick="flipRole(${idx})">
         <div class="flip-inner">
@@ -234,7 +304,7 @@ function showRoleReveal(idx) {
             </div>
           </div>
           <div class="flip-back">
-            <div class="role-card-back" id="roleBack" style="background:${r.bg};border-color:${r.border};">
+            <div class="role-card-back" style="background:${r.bg};border-color:${r.border};">
               <span style="font-size:2.5rem;margin-bottom:0.5rem;">${r.icon}</span>
               <p style="font-size:1.5rem;font-weight:700;color:${r.color};font-family:var(--font-h);">${r.name}</p>
               <span class="badge ${r.team==='good'?'badge-green':r.team==='evil'?'badge-red':'badge-blue'} mt-1 mb-2">${r.team}</span>
@@ -244,7 +314,7 @@ function showRoleReveal(idx) {
         </div>
       </div>
 
-      <div class="progress-bar"><div class="progress-fill" style="width:${((idx+1)/MF.players.length)*100}%"></div></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${((idx + 1) / MF.players.length) * 100}%"></div></div>
     </div>
   `);
 }
@@ -261,16 +331,58 @@ function flipRole(idx) {
     btn.className = 'mt-3 animate-slide-up';
     const nextIdx = idx + 1;
     if (nextIdx < MF.players.length) {
-      btn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showRoleReveal(${nextIdx})">
-        Next: ${MF.players[nextIdx].name} →
+      btn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showMFPassScreen(${nextIdx})">
+        Pass to ${MF.players[nextIdx].name} →
       </button>`;
     } else {
-      btn.innerHTML = `<button class="btn btn-primary btn-full" onclick="beginFirstNight()">
-        🌙 Begin Night 1
+      btn.innerHTML = `<button class="btn btn-primary btn-full" onclick="showNarratorHandoff()">
+        All Roles Seen →
       </button>`;
     }
     container.appendChild(btn);
   }, 1000);
+}
+
+// ── SCREEN: Narrator Handoff ───────────────────────────────
+function showNarratorHandoff() {
+  const roleGroups = {};
+  MF.players.forEach(p => {
+    if (!roleGroups[p.role]) roleGroups[p.role] = [];
+    roleGroups[p.role].push(p.name);
+  });
+
+  render(`
+    <div class="stagger text-center">
+      <div class="card card-glow mb-4 p-3" style="background:linear-gradient(135deg,rgba(212,160,23,0.12),transparent);">
+        <span style="font-size:2.5rem;display:block;margin-bottom:0.75rem;animation:float 4s ease-in-out infinite;">📜</span>
+        <p class="text-muted text-sm mb-1" style="letter-spacing:0.1em;text-transform:uppercase;">Narrator Only</p>
+        <h2 class="font-serif text-gold2 mb-2">Take the Phone Back</h2>
+        <p style="color:var(--text2);line-height:1.6;">Everyone has seen their role.<br/><strong style="color:var(--text);">Collect the phone</strong> before continuing.</p>
+      </div>
+
+      <div class="card mb-4" style="text-align:left;">
+        <p class="input-label mb-3">🔒 Role Sheet (Narrator Only)</p>
+        <div class="flex flex-col gap-2">
+          ${Object.entries(roleGroups).map(([role, names]) => {
+            const r = ROLES[role];
+            return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:${r.bg};border:1px solid ${r.border};border-radius:var(--r-sm);">
+              <span style="font-size:1.2rem;">${r.icon}</span>
+              <div style="flex:1;">
+                <span style="font-weight:700;font-size:0.85rem;color:${r.color};">${r.name}</span>
+                <span class="badge ${r.team==='good'?'badge-green':r.team==='evil'?'badge-red':'badge-blue'}" style="font-size:0.6rem;margin-left:0.4rem;">${r.team}</span>
+                <p class="text-sm text-muted mt-0" style="margin-top:0.2rem;">${names.join(', ')}</p>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <p class="text-muted text-sm mb-3">Make sure you have the phone. Players should not see the next screen.</p>
+      <button class="btn btn-primary btn-lg btn-full" onclick="beginFirstNight()">
+        🌙 Begin Night 1
+      </button>
+    </div>
+  `);
 }
 
 // ── SCREEN: Night Phase ────────────────────────────────────
@@ -298,8 +410,28 @@ function showNightPhase() {
         </div>
       </div>
 
+      <div class="card mb-3">
+        <button onclick="toggleNightRoleSheet()" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0;text-align:left;">
+          <p class="input-label" style="margin:0;">🔒 Narrator Role Sheet</p>
+          <span id="nightSheetArrow" style="font-size:0.85rem;color:var(--text3);">▸ Show</span>
+        </button>
+        <div id="nightSheetContent" style="display:none;margin-top:0.75rem;">
+          <div class="flex flex-col gap-2">
+            ${MF.players.map(p => {
+              const r = ROLES[p.role];
+              return `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0.6rem;background:${p.alive ? r.bg : 'var(--bg3)'};border:1px solid ${p.alive ? r.border : 'var(--border)'};border-radius:var(--r-sm);opacity:${p.alive ? '1' : '0.4'};">
+                <span style="font-size:1rem;">${r.icon}</span>
+                <span style="flex:1;font-size:0.85rem;font-weight:600;color:${p.alive ? r.color : 'var(--text3)'};">${p.name}</span>
+                <span style="font-size:0.8rem;color:var(--text3);">${r.name}</span>
+                ${!p.alive ? '<span class="badge badge-red" style="font-size:0.6rem;">Dead</span>' : ''}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
       <button class="btn btn-primary btn-lg btn-full" onclick="showNightActions()">
-        Begin Night Actions
+        Begin Guided Night →
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
     </div>
@@ -328,29 +460,121 @@ function buildNightOrder() {
 // ── Night action screens ────────────────────────────────────
 let nightActionQueue = [];
 let nightQueueIdx = 0;
+let _narratorCb = null;
 
 function showNightActions() {
   nightActionQueue = [];
-  // Build queue of roles that need action this night
   const roleOrder = ['judge','prophet','healer','false_prophet','pharaoh','sorcerer'];
   roleOrder.forEach(role => {
     const player = MF.players.find(p => p.alive && p.role === role);
     if (player) nightActionQueue.push({ role, player });
   });
   nightQueueIdx = 0;
-  processNightQueue();
+
+  // Show "all eyes closed" screen before any roles wake
+  render(`
+    <div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
+      <div class="card" style="max-width:340px;width:100%;padding:2.5rem 2rem;background:var(--bg2);">
+        <span style="font-size:3.5rem;display:block;margin-bottom:1rem;animation:float 4s ease-in-out infinite;">🌙</span>
+        <p class="text-muted text-sm mb-2" style="letter-spacing:0.12em;text-transform:uppercase;">Narrator Mode</p>
+        <h2 class="font-serif text-gold2 mb-3">Night Begins</h2>
+        <p style="color:var(--text2);line-height:1.6;margin-bottom:2rem;">
+          Instruct everyone to <strong style="color:var(--text);">close their eyes</strong>.<br/>
+          <span class="text-sm text-muted">Confirm everyone is asleep, then continue.</span>
+        </p>
+        <button class="btn btn-primary btn-full" onclick="processNightQueue()">
+          Everyone's Eyes Are Closed →
+        </button>
+      </div>
+    </div>
+  `);
 }
 
 function processNightQueue() {
   if (nightQueueIdx >= nightActionQueue.length) {
-    resolveNight();
+    showAllAwakeTransition(() => resolveNight());
     return;
   }
   const { role, player } = nightActionQueue[nightQueueIdx];
-  showNightActionScreen(role, player);
+
+  // Judge skip if already used
+  if (role === 'judge' && MF.players.find(p => p.role === 'judge')?.judgeUsed) {
+    nightQueueIdx++;
+    processNightQueue();
+    return;
+  }
+
+  showNarratorWake(role, player, () => showNightActionScreen(role, player));
+}
+
+function showNarratorWake(role, player, cb) {
+  _narratorCb = cb;
+  const r = ROLES[role];
+  render(`
+    <div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
+      <div class="card" style="max-width:340px;width:100%;padding:2.5rem 2rem;">
+        <p class="text-muted text-sm mb-3" style="letter-spacing:0.1em;text-transform:uppercase;">All Others — Keep Eyes Closed</p>
+        <span style="font-size:3.5rem;display:block;margin-bottom:0.75rem;">${r.icon}</span>
+        <h2 class="font-serif mb-2" style="color:${r.color};">${r.name}</h2>
+        <p style="color:var(--text2);line-height:1.6;margin-bottom:2rem;">
+          <strong style="color:var(--text);">${player.name}</strong>, open your eyes quietly.
+        </p>
+        <button class="btn btn-primary btn-full" onclick="continueNarrator()">I'm Awake →</button>
+      </div>
+    </div>
+  `);
+}
+
+function showNarratorSleep(role, player, cb) {
+  _narratorCb = cb;
+  const r = ROLES[role];
+  let pct = 100;
+  render(`
+    <div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
+      <div class="card" style="max-width:340px;width:100%;padding:2.5rem 2rem;background:var(--bg2);">
+        <span style="font-size:2.5rem;display:block;margin-bottom:0.75rem;opacity:0.5;">${r.icon}</span>
+        <h2 class="font-serif mb-3" style="color:var(--text3);">${r.name}</h2>
+        <p style="color:var(--text3);margin-bottom:2rem;line-height:1.5;">
+          ${player.name}, <strong style="color:var(--text2);">close your eyes</strong> and go back to sleep.
+        </p>
+        <div class="progress-bar"><div id="sleepBar" class="progress-fill" style="width:100%;background:var(--text3);"></div></div>
+      </div>
+    </div>
+  `);
+  const iv = setInterval(() => {
+    pct -= 5;
+    const bar = document.getElementById('sleepBar');
+    if (bar) bar.style.width = Math.max(0, pct) + '%';
+    if (pct <= 0) {
+      clearInterval(iv);
+      if (_narratorCb) { const c = _narratorCb; _narratorCb = null; c(); }
+    }
+  }, 75);
+}
+
+function showAllAwakeTransition(cb) {
+  _narratorCb = cb;
+  render(`
+    <div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;">
+      <div class="card" style="max-width:340px;width:100%;padding:2.5rem 2rem;">
+        <span style="font-size:3rem;display:block;margin-bottom:1rem;animation:bounce 1.5s infinite;">☀️</span>
+        <h2 class="font-serif text-gold2 mb-3">Night Is Over</h2>
+        <p style="color:var(--text2);line-height:1.6;margin-bottom:2rem;">
+          Tell everyone to <strong style="color:var(--text);">open their eyes</strong>. Dawn is breaking.
+        </p>
+        <button class="btn btn-primary btn-full" onclick="continueNarrator()">Everyone's Awake →</button>
+      </div>
+    </div>
+  `);
+}
+
+function continueNarrator() {
+  if (_narratorCb) { const c = _narratorCb; _narratorCb = null; c(); }
 }
 
 function showNightActionScreen(role, player) {
+  if (role === 'sorcerer') { showSorcererStep1(player); return; }
+
   const r = ROLES[role];
   const alive = MF.players.filter(p => p.alive);
   const alivePlayers = alive.filter(p => p.name !== player.name);
@@ -360,22 +584,15 @@ function showNightActionScreen(role, player) {
 
   if (role === 'prophet')  instruction = 'Choose one player to inspect. You will learn if they are Good or Evil.';
   if (role === 'healer')   instruction = `Choose one player to protect tonight. ${MF.lastHealerTarget >= 0 ? `You cannot protect ${MF.players[MF.lastHealerTarget]?.name} again.` : ''}`;
-  if (role === 'judge')    {
-    const judgeUsed = MF.players.find(p => p.role === 'judge')?.judgeUsed;
-    if (judgeUsed) { nightQueueIdx++; processNightQueue(); return; }
-    instruction = 'Once per game: choose one player to block tonight. Or skip.';
-  }
+  if (role === 'judge')    instruction = 'Once per game: choose one player to block tonight — nullifying their action. Or skip.';
   if (role === 'false_prophet' || role === 'pharaoh') instruction = 'Choose a faithful player to eliminate tonight.';
-  if (role === 'sorcerer') instruction = 'Choose one player whose action you will redirect.';
 
-  // For healer, filter out last healed target
   if (role === 'healer' && MF.lastHealerTarget >= 0) {
     targetFilter = alivePlayers.filter(p => MF.players.indexOf(p) !== MF.lastHealerTarget);
   }
-  // Mafia see each other
-  const isMafia = ['false_prophet','pharaoh','sorcerer'].includes(role);
+  const isMafia = ['false_prophet','pharaoh'].includes(role);
   if (isMafia) {
-    targetFilter = alive.filter(p => p.role !== role && (p.role !== 'false_prophet' && p.role !== 'pharaoh' && p.role !== 'sorcerer'));
+    targetFilter = alive.filter(p => p.role !== 'false_prophet' && p.role !== 'pharaoh' && p.role !== 'sorcerer');
   }
 
   render(`
@@ -401,9 +618,7 @@ function showNightActionScreen(role, player) {
       </div>
 
       ${(role === 'judge' || role === 'healer') ? `
-        <button class="btn btn-ghost btn-full mb-2" onclick="skipNightAction('${role}')">
-          Skip (No Action)
-        </button>
+        <button class="btn btn-ghost btn-full mb-2" onclick="skipNightAction('${role}')">Skip (No Action)</button>
       ` : ''}
 
       <div class="card hidden animate-slide-up" id="nightConfirm">
@@ -415,6 +630,96 @@ function showNightActionScreen(role, player) {
       </div>
     </div>
   `);
+}
+
+// ── Sorcerer two-step redirect ──────────────────────────────
+let _sorcererFrom = -1;
+
+function showSorcererStep1(player) {
+  const r = ROLES['sorcerer'];
+  const alive = MF.players.filter(p => p.alive);
+  const targets = alive.filter(p => p !== player);
+  _sorcererFrom = -1;
+
+  render(`
+    <div class="stagger text-center">
+      <div class="night-screen card card-glow p-3 mb-4">
+        <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">${r.icon}</span>
+        <h2 class="font-serif mb-1" style="color:${r.color};">Sorcerer Awakens</h2>
+        <p class="text-sm" style="color:var(--text2);">${player.name}, wake up quietly.</p>
+      </div>
+      <div class="card mb-3">
+        <p class="text-sm text-center mb-1" style="color:var(--text2);">Step 1 of 2</p>
+        <p class="text-sm text-center mb-3" style="color:var(--text2);">Choose a player whose <strong style="color:var(--text);">action you will redirect</strong>.</p>
+        <div class="flex flex-col gap-2">
+          ${targets.map(p => {
+            const pi = MF.players.indexOf(p);
+            return `<button class="vote-btn" id="src-from-${pi}" onclick="selectSorcererFrom(${pi})">
+              <div class="avatar">${getInitials(p.name)}</div>
+              <span>${p.name}</span>
+            </button>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function selectSorcererFrom(fromIdx) {
+  _sorcererFrom = fromIdx;
+  const sorcerer = MF.players.find(p => p.role === 'sorcerer' && p.alive);
+  const r = ROLES['sorcerer'];
+  const fromPlayer = MF.players[fromIdx];
+  const alive = MF.players.filter(p => p.alive);
+  const targets = alive.filter(p => p !== sorcerer && MF.players.indexOf(p) !== fromIdx);
+
+  render(`
+    <div class="stagger text-center">
+      <div class="night-screen card card-glow p-3 mb-4">
+        <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">${r.icon}</span>
+        <h2 class="font-serif mb-1" style="color:${r.color};">Sorcerer — Step 2</h2>
+        <p class="text-sm" style="color:var(--text2);">Redirecting <strong style="color:var(--text);">${fromPlayer.name}</strong>'s action to…</p>
+      </div>
+      <div class="card mb-3">
+        <p class="text-sm text-center mb-1" style="color:var(--text2);">Step 2 of 2</p>
+        <p class="text-sm text-center mb-3" style="color:var(--text2);">Choose the <strong style="color:var(--text);">new target</strong> for ${fromPlayer.name}'s action.</p>
+        <div class="flex flex-col gap-2" id="nightTargets">
+          ${targets.map(p => {
+            const pi = MF.players.indexOf(p);
+            return `<button class="vote-btn" id="src-to-${pi}" onclick="selectSorcererTo(${pi})">
+              <div class="avatar">${getInitials(p.name)}</div>
+              <span>${p.name}</span>
+            </button>`;
+          }).join('')}
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-full mb-2" onclick="showSorcererStep1(MF.players.find(p=>p.role==='sorcerer'&&p.alive))">← Back</button>
+      <div class="card hidden animate-slide-up" id="nightConfirm">
+        <p class="text-sm text-center text-muted mb-2">Confirm redirect?</p>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-full" onclick="clearNightSelection()">Change</button>
+          <button class="btn btn-primary btn-full" onclick="confirmSorcererAction()">Confirm & Sleep</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function selectSorcererTo(toIdx) {
+  selectedNightTarget = toIdx;
+  document.querySelectorAll('#nightTargets .vote-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`src-to-${toIdx}`)?.classList.add('selected');
+  document.getElementById('nightConfirm')?.classList.remove('hidden');
+  haptic('light');
+}
+
+function confirmSorcererAction() {
+  if (_sorcererFrom === -1 || selectedNightTarget === -1) { showToast('Select both players', 'error'); return; }
+  haptic('medium');
+  MF.nightActions['sorcerer'] = { from: _sorcererFrom, to: selectedNightTarget };
+  const current = nightActionQueue[nightQueueIdx];
+  nightQueueIdx++;
+  showNarratorSleep('sorcerer', current.player, () => processNightQueue());
 }
 
 let selectedNightTarget = -1;
@@ -434,8 +739,9 @@ function clearNightSelection() {
 
 function skipNightAction(role) {
   MF.nightActions[role] = null;
+  const current = nightActionQueue[nightQueueIdx];
   nightQueueIdx++;
-  showNightTransition(() => processNightQueue());
+  showNarratorSleep(current.role, current.player, () => processNightQueue());
 }
 
 function confirmNightAction(role) {
@@ -447,25 +753,15 @@ function confirmNightAction(role) {
     if (judge) judge.judgeUsed = true;
   }
 
-  // For mafia roles, they share a single kill target
   if (role === 'false_prophet' || role === 'pharaoh') {
     MF.nightActions['mafia'] = selectedNightTarget;
   } else {
     MF.nightActions[role] = selectedNightTarget;
   }
 
+  const current = nightActionQueue[nightQueueIdx];
   nightQueueIdx++;
-  showNightTransition(() => processNightQueue());
-}
-
-function showNightTransition(cb) {
-  render(`
-    <div class="text-center" style="padding:4rem 1rem;">
-      <span style="font-size:3rem;display:block;margin-bottom:1rem;animation:float 3s ease-in-out infinite;">🌙</span>
-      <p class="font-serif text-muted" style="font-size:1.1rem;">Sleep now…</p>
-    </div>
-  `);
-  setTimeout(cb, 1500);
+  showNarratorSleep(current.role, current.player, () => processNightQueue());
 }
 
 // ── Resolve night ───────────────────────────────────────────
@@ -473,20 +769,38 @@ function resolveNight() {
   MF.nightResults = [];
   const actions = MF.nightActions;
 
-  // Reset protections
+  // 1. Sorcerer redirect — swap another player's action target
+  if (actions.sorcerer && actions.sorcerer.from !== undefined) {
+    const { from, to } = actions.sorcerer;
+    const redirectedRole = MF.players[from]?.role;
+    if (redirectedRole === 'prophet')  actions.prophet = to;
+    else if (redirectedRole === 'healer') actions.healer = to;
+    else if (redirectedRole === 'judge')  actions.judge = to;
+    else if (redirectedRole === 'false_prophet' || redirectedRole === 'pharaoh') actions.mafia = to;
+  }
+
+  // 2. Judge block — nullify the blocked player's action entirely
+  if (actions.judge !== null && actions.judge !== undefined) {
+    const blockedRole = MF.players[actions.judge]?.role;
+    if (blockedRole === 'prophet')  actions.prophet = null;
+    else if (blockedRole === 'healer') actions.healer = null;
+    else if (blockedRole === 'false_prophet' || blockedRole === 'pharaoh') actions.mafia = null;
+    else if (blockedRole === 'sorcerer') actions.sorcerer = null;
+  }
+
+  // 3. Reset protections
   MF.players.forEach(p => { p.protected = false; });
 
-  // Healer protects
+  // 4. Healer protects
   if (actions.healer !== null && actions.healer !== undefined) {
     MF.players[actions.healer].protected = true;
     MF.lastHealerTarget = actions.healer;
   }
 
-  // Mafia kills (check if judge blocked them or healer saved target)
+  // 5. Mafia kills
   if (actions.mafia !== null && actions.mafia !== undefined) {
-    const judgeBlocked = actions.judge === MF.players.findIndex(p => p.role === 'false_prophet' || p.role === 'pharaoh');
     const target = MF.players[actions.mafia];
-    if (!judgeBlocked && target && !target.protected && target.alive) {
+    if (target && !target.protected && target.alive) {
       target.alive = false;
       MF.nightResults.push({ type: 'eliminated', name: target.name, role: target.role });
     } else if (target?.protected) {
@@ -496,11 +810,13 @@ function resolveNight() {
     }
   }
 
-  // Prophet result (private — shown to prophet)
+  // 6. Prophet result — Pharaoh deceives the prophet, appearing as Good
   if (actions.prophet !== null && actions.prophet !== undefined) {
     const target = MF.players[actions.prophet];
     const r = ROLES[target?.role];
-    MF.nightActions['prophetResult'] = { name: target?.name, team: r?.team, icon: r?.icon };
+    const apparentTeam = target?.role === 'pharaoh' ? 'good' : r?.team;
+    const apparentIcon = target?.role === 'pharaoh' ? ROLES['disciple'].icon : r?.icon;
+    MF.nightActions['prophetResult'] = { name: target?.name, team: apparentTeam, icon: apparentIcon };
   }
 
   MF.night++;
@@ -509,7 +825,85 @@ function resolveNight() {
   const winCheck = checkWinCondition();
   if (winCheck) { showGameOver(winCheck); return; }
 
-  showDawnReveal();
+  showNarratorNightSummary();
+}
+
+// ── SCREEN: Narrator Night Summary (private) ───────────────
+function showNarratorNightSummary() {
+  const actions = MF.nightActions;
+  const results = MF.nightResults;
+  const prophetResult = actions['prophetResult'];
+  const prophet = MF.players.find(p => p.role === 'prophet' && p.alive);
+
+  const eliminated = results.find(r => r.type === 'eliminated');
+  const protected_ = results.find(r => r.type === 'protected');
+  const blocked = results.find(r => r.type === 'blocked');
+
+  const mafiaTarget = actions.mafia !== undefined && actions.mafia !== null ? MF.players[actions.mafia]?.name : null;
+  const healerTarget = actions.healer !== undefined && actions.healer !== null ? MF.players[actions.healer]?.name : null;
+  const judgeTarget = actions.judge !== undefined && actions.judge !== null ? MF.players[actions.judge]?.name : null;
+  const sorcererRedirect = (actions.sorcerer && actions.sorcerer.from !== undefined)
+    ? `${MF.players[actions.sorcerer.from]?.name} → ${MF.players[actions.sorcerer.to]?.name}` : null;
+
+  render(`
+    <div class="stagger">
+      <div class="card card-glow mb-4 p-3 text-center" style="background:linear-gradient(135deg,rgba(212,160,23,0.12),transparent);">
+        <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">📜</span>
+        <p class="text-muted text-sm mb-1" style="letter-spacing:0.1em;text-transform:uppercase;">Narrator Only</p>
+        <h2 class="font-serif text-gold2 mb-1">Night ${MF.night - 1} Results</h2>
+        <p class="text-muted text-sm">Read this privately, then announce to the group.</p>
+      </div>
+
+      <div class="card mb-3 flex flex-col gap-2" style="gap:0.6rem;">
+        ${eliminated ? `
+          <div style="padding:0.6rem 0.75rem;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:var(--r-sm);">
+            <p style="font-size:0.8rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.2rem;">Eliminated</p>
+            <p style="font-weight:700;color:var(--red);">💀 ${eliminated.name} <span style="font-weight:400;color:var(--text2);font-size:0.85rem;">(${ROLES[eliminated.role]?.name})</span></p>
+          </div>` : protected_ ? `
+          <div style="padding:0.6rem 0.75rem;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:var(--r-sm);">
+            <p style="font-size:0.8rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.2rem;">Healer Saved</p>
+            <p style="font-weight:700;color:var(--green);">🌿 ${protected_.name} was targeted but survived</p>
+          </div>` : `
+          <div style="padding:0.6rem 0.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <p style="color:var(--text2);font-size:0.9rem;">✦ No elimination tonight${blocked ? ' — Mafia was blocked' : ''}</p>
+          </div>`}
+
+        ${mafiaTarget ? `
+          <div style="padding:0.5rem 0.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <p style="font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.1rem;">Mafia targeted</p>
+            <p style="font-size:0.9rem;color:var(--text2);">${mafiaTarget}</p>
+          </div>` : ''}
+
+        ${healerTarget ? `
+          <div style="padding:0.5rem 0.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <p style="font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.1rem;">Healer protected</p>
+            <p style="font-size:0.9rem;color:var(--text2);">${healerTarget}</p>
+          </div>` : ''}
+
+        ${judgeTarget ? `
+          <div style="padding:0.5rem 0.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <p style="font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.1rem;">Judge blocked</p>
+            <p style="font-size:0.9rem;color:var(--text2);">${judgeTarget}</p>
+          </div>` : ''}
+
+        ${sorcererRedirect ? `
+          <div style="padding:0.5rem 0.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <p style="font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.1rem;">Sorcerer redirected</p>
+            <p style="font-size:0.9rem;color:var(--text2);">${sorcererRedirect}</p>
+          </div>` : ''}
+
+        ${prophetResult && prophet ? `
+          <div style="padding:0.5rem 0.75rem;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:var(--r-sm);">
+            <p style="font-size:0.75rem;color:var(--blue);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.1rem;">👁️ Prophet (${prophet.name}) inspected</p>
+            <p style="font-size:0.9rem;color:var(--text2);">${prophetResult.icon} ${prophetResult.name} — <strong style="color:${prophetResult.team==='evil'?'var(--red)':prophetResult.team==='good'?'var(--green)':'var(--text2)'};">${prophetResult.team.toUpperCase()}</strong></p>
+          </div>` : ''}
+      </div>
+
+      <button class="btn btn-primary btn-lg btn-full" onclick="showDawnReveal()">
+        ☀️ Announce to Group
+      </button>
+    </div>
+  `);
 }
 
 // ── SCREEN: Dawn ────────────────────────────────────────────
@@ -582,73 +976,197 @@ function revealProphetVision(name, team, icon) {
 // ── SCREEN: Day Discussion ─────────────────────────────────
 function showDayDiscussion() {
   MF.phase = 'day';
-  MF.dayVotes = {};
-  MF.selectedVote = -1;
   const alive = MF.players.filter(p => p.alive);
 
   render(`
     <div class="stagger">
       <div class="card mb-3 text-center">
         <span class="phase-banner phase-day" style="display:inline-block;margin-bottom:0.75rem;">☀️ Day ${MF.night - 1}</span>
-        <h2 class="font-serif text-gold2 mb-1">Seek the Truth</h2>
-        <p class="text-muted text-sm">Discuss freely. Accuse wisely. Then vote to eliminate one player.</p>
+        <h2 class="font-serif text-gold2 mb-1">Open Discussion</h2>
+        <p class="text-muted text-sm">Discuss freely. Accuse, question, and defend — then vote.</p>
       </div>
 
-      <div class="card mb-3">
-        <p class="input-label mb-2">Vote to Eliminate</p>
-        <div class="flex flex-col gap-2" id="dayVoteList">
-          ${alive.map(p => {
-            const pi = MF.players.indexOf(p);
-            return `<button class="vote-btn" id="dvbtn-${pi}" onclick="selectDayVote(${pi})">
-              <div class="avatar">${getInitials(p.name)}</div>
-              <span>${p.name}</span>
-            </button>`;
-          }).join('')}
+      <div class="card mb-4">
+        <p class="input-label mb-2">Living Players (${alive.length})</p>
+        <div class="flex flex-wrap gap-1">
+          ${alive.map(p => `
+            <span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.3rem 0.7rem;background:var(--bg3);border:1px solid var(--border);border-radius:999px;font-size:0.85rem;">
+              <span class="avatar" style="width:22px;height:22px;font-size:0.65rem;">${getInitials(p.name)}</span>
+              ${p.name}
+            </span>
+          `).join('')}
         </div>
       </div>
 
-      <div class="card hidden animate-slide-up mb-3" id="dayConfirm">
-        <p class="text-sm text-center text-muted mb-2">Eliminate <strong id="dayVoteTarget" style="color:var(--text)"></strong>?</p>
-        <div class="flex gap-2">
-          <button class="btn btn-ghost btn-full" onclick="clearDayVote()">Cancel</button>
-          <button class="btn btn-danger btn-full" onclick="confirmDayElim()">⚡ Eliminate</button>
+      <div class="card mb-3" style="text-align:left;">
+        <button onclick="toggleNarratorSheet()" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0;text-align:left;">
+          <p class="input-label" style="margin:0;">🔒 Narrator Role Sheet</p>
+          <span id="narratorSheetArrow" style="font-size:0.85rem;color:var(--text3);">▸ Show</span>
+        </button>
+        <div id="narratorSheetContent" style="display:none;margin-top:0.75rem;">
+          <div class="flex flex-col gap-2">
+            ${MF.players.map(p => {
+              const r = ROLES[p.role];
+              return `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0.6rem;background:${p.alive ? r.bg : 'var(--bg3)'};border:1px solid ${p.alive ? r.border : 'var(--border)'};border-radius:var(--r-sm);opacity:${p.alive ? '1' : '0.45'};">
+                <span style="font-size:1rem;">${r.icon}</span>
+                <span style="flex:1;font-size:0.85rem;font-weight:600;color:${p.alive ? r.color : 'var(--text3)'};">${p.name}</span>
+                <span style="font-size:0.8rem;color:var(--text3);">${r.name}</span>
+                ${!p.alive ? '<span class="badge badge-red" style="font-size:0.6rem;">Dead</span>' : ''}
+              </div>`;
+            }).join('')}
+          </div>
         </div>
       </div>
 
+      <button class="btn btn-primary btn-lg btn-full mb-2" onclick="showVotingRound()">
+        ⚖️ Begin Voting Round
+      </button>
       <button class="btn btn-ghost btn-full" onclick="skipDayElim()">Skip Vote (No Elimination)</button>
     </div>
   `);
 }
 
-function selectDayVote(idx) {
-  MF.selectedVote = idx;
-  document.querySelectorAll('#dayVoteList .vote-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById(`dvbtn-${idx}`)?.classList.add('selected');
-  document.getElementById('dayConfirm')?.classList.remove('hidden');
-  document.getElementById('dayVoteTarget').textContent = MF.players[idx].name;
+// ── SCREEN: Live Voting Tally ──────────────────────────────
+let _dayVoteTally = {};
+
+function showVotingRound() {
+  _dayVoteTally = {};
+  MF.players.filter(p => p.alive).forEach(p => { _dayVoteTally[MF.players.indexOf(p)] = 0; });
+  renderVotingRound();
+}
+
+function renderVotingRound() {
+  const alive = MF.players.filter(p => p.alive);
+  const totalVotes = Object.values(_dayVoteTally).reduce((a, b) => a + b, 0);
+  const maxVotes = Math.max(0, ...Object.values(_dayVoteTally));
+  const leaders = Object.entries(_dayVoteTally).filter(([, v]) => v === maxVotes && maxVotes > 0);
+  const isTie = leaders.length > 1;
+  const leaderIdx = !isTie && leaders.length === 1 ? parseInt(leaders[0][0]) : -1;
+
+  render(`
+    <div class="stagger">
+      <div class="card mb-3 text-center">
+        <span class="phase-banner phase-day" style="display:inline-block;margin-bottom:0.5rem;">⚖️ Day ${MF.night - 1} — Voting</span>
+        <p class="text-muted text-sm mt-1">Tap <strong style="color:var(--green);">＋</strong> for each vote cast. Total: <strong style="color:var(--text);" id="vt-total">${totalVotes}</strong></p>
+      </div>
+
+      <div class="card mb-3">
+        <div class="flex flex-col gap-2">
+          ${alive.map(p => {
+            const pi = MF.players.indexOf(p);
+            const votes = _dayVoteTally[pi] || 0;
+            const isLeader = votes === maxVotes && maxVotes > 0;
+            return `
+              <div id="vt-row-${pi}" style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;background:${isLeader ? 'rgba(248,113,113,0.1)' : 'var(--bg3)'};border:1px solid ${isLeader ? 'rgba(248,113,113,0.3)' : 'var(--border)'};border-radius:var(--r-sm);transition:all 0.2s;">
+                <div class="avatar">${getInitials(p.name)}</div>
+                <span style="flex:1;font-weight:600;">${p.name}</span>
+                <span style="font-family:var(--font-h);font-size:1.5rem;font-weight:700;min-width:32px;text-align:center;color:${isLeader ? 'var(--red)' : 'var(--text2)'};" id="vt-${pi}">${votes}</span>
+                <div class="flex gap-1">
+                  <button onclick="adjustVote(${pi}, -1)" class="btn btn-ghost btn-sm btn-icon" style="width:34px;height:34px;">−</button>
+                  <button onclick="adjustVote(${pi}, 1)" class="btn btn-ghost btn-sm btn-icon" style="width:34px;height:34px;background:rgba(74,222,128,0.12);color:var(--green);">＋</button>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div id="vt-action">
+        ${maxVotes > 0 ? isTie ? `
+          <div class="card mb-3" style="background:var(--bg3);">
+            <p class="text-center text-sm" style="color:var(--text2);">⚖️ Tie — call a revote or skip</p>
+          </div>
+          <button class="btn btn-primary btn-full mb-2" onclick="showVotingRound()">🔁 Revote</button>
+          <button class="btn btn-ghost btn-full" onclick="skipDayElim()">Skip — No Elimination</button>
+        ` : `
+          <div class="card mb-3 card-elevated" style="background:rgba(248,113,113,0.08);border-color:rgba(248,113,113,0.3);">
+            <p class="text-center font-bold" style="color:var(--red);">💀 ${MF.players[leaderIdx].name} leads with ${maxVotes} vote${maxVotes > 1 ? 's' : ''}</p>
+          </div>
+          <button class="btn btn-danger btn-lg btn-full mb-2" onclick="confirmVoteElimination(${leaderIdx})">
+            ⚖️ Eliminate ${MF.players[leaderIdx].name}
+          </button>
+          <button class="btn btn-ghost btn-full" onclick="skipDayElim()">Skip — No Elimination</button>
+        ` : `
+          <button class="btn btn-ghost btn-full" onclick="skipDayElim()">Skip — No Elimination</button>
+        `}
+      </div>
+    </div>
+  `);
+}
+
+function adjustVote(playerIdx, delta) {
+  const alive = MF.players.filter(p => p.alive);
+  const totalBefore = Object.values(_dayVoteTally).reduce((a, b) => a + b, 0);
+  if (delta > 0 && totalBefore >= alive.length) { showToast(`Max ${alive.length} votes (one per player)`, 'error'); return; }
+  _dayVoteTally[playerIdx] = Math.max(0, (_dayVoteTally[playerIdx] || 0) + delta);
+  const totalVotes = Object.values(_dayVoteTally).reduce((a, b) => a + b, 0);
+  const maxVotes = Math.max(0, ...Object.values(_dayVoteTally));
+  const leaders = Object.entries(_dayVoteTally).filter(([, v]) => v === maxVotes && maxVotes > 0);
+  const isTie = leaders.length > 1;
+  const leaderIdx = !isTie && leaders.length === 1 ? parseInt(leaders[0][0]) : -1;
+
+  // Update in-place — no scroll reset
+  const totalEl = document.getElementById('vt-total');
+  if (totalEl) totalEl.textContent = totalVotes;
+
+  alive.forEach(p => {
+    const pi = MF.players.indexOf(p);
+    const votes = _dayVoteTally[pi] || 0;
+    const isLeader = votes === maxVotes && maxVotes > 0;
+    const row = document.getElementById(`vt-row-${pi}`);
+    const numEl = document.getElementById(`vt-${pi}`);
+    if (row) { row.style.background = isLeader ? 'rgba(248,113,113,0.1)' : 'var(--bg3)'; row.style.borderColor = isLeader ? 'rgba(248,113,113,0.3)' : 'var(--border)'; }
+    if (numEl) { numEl.textContent = votes; numEl.style.color = isLeader ? 'var(--red)' : 'var(--text2)'; }
+  });
+
+  const actionEl = document.getElementById('vt-action');
+  if (!actionEl) return;
+  if (maxVotes === 0) {
+    actionEl.innerHTML = `<button class="btn btn-ghost btn-full" onclick="skipDayElim()">Skip — No Elimination</button>`;
+  } else if (isTie) {
+    actionEl.innerHTML = `
+      <div class="card mb-3" style="background:var(--bg3);"><p class="text-center text-sm" style="color:var(--text2);">⚖️ Tie — call a revote or skip</p></div>
+      <button class="btn btn-primary btn-full mb-2" onclick="showVotingRound()">🔁 Revote</button>
+      <button class="btn btn-ghost btn-full" onclick="skipDayElim()">Skip — No Elimination</button>`;
+  } else {
+    actionEl.innerHTML = `
+      <div class="card mb-3 card-elevated" style="background:rgba(248,113,113,0.08);border-color:rgba(248,113,113,0.3);">
+        <p class="text-center font-bold" style="color:var(--red);">💀 ${MF.players[leaderIdx].name} leads with ${maxVotes} vote${maxVotes > 1 ? 's' : ''}</p>
+      </div>
+      <button class="btn btn-danger btn-lg btn-full mb-2" onclick="confirmVoteElimination(${leaderIdx})">⚖️ Eliminate ${MF.players[leaderIdx].name}</button>
+      <button class="btn btn-ghost btn-full" onclick="skipDayElim()">Skip — No Elimination</button>`;
+  }
   haptic('light');
 }
 
-function clearDayVote() {
-  MF.selectedVote = -1;
-  document.querySelectorAll('#dayVoteList .vote-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('dayConfirm')?.classList.add('hidden');
+function confirmVoteElimination(playerIdx) {
+  haptic('heavy');
+  const target = MF.players[playerIdx];
+  target.alive = false;
+  const win = checkWinCondition();
+  if (win) { showGameOver(win); return; }
+  showDayElimResult(target);
+}
+
+function toggleNightRoleSheet() {
+  const content = document.getElementById('nightSheetContent');
+  const arrow = document.getElementById('nightSheetArrow');
+  if (!content) return;
+  const open = content.style.display !== 'none';
+  content.style.display = open ? 'none' : '';
+  if (arrow) arrow.textContent = open ? '▸ Show' : '▾ Hide';
+}
+
+function toggleNarratorSheet() {
+  const content = document.getElementById('narratorSheetContent');
+  const arrow = document.getElementById('narratorSheetArrow');
+  if (!content) return;
+  const open = content.style.display !== 'none';
+  content.style.display = open ? 'none' : '';
+  if (arrow) arrow.textContent = open ? '▸ Show' : '▾ Hide';
 }
 
 function skipDayElim() {
   showNightPhase();
-}
-
-function confirmDayElim() {
-  if (MF.selectedVote === -1) return;
-  haptic('heavy');
-  const target = MF.players[MF.selectedVote];
-  target.alive = false;
-
-  const win = checkWinCondition();
-  if (win) { showGameOver(win); return; }
-
-  showDayElimResult(target);
 }
 
 function showDayElimResult(target) {
